@@ -28,6 +28,7 @@ class TwitterReceiver(MessageReceiverInterface):
             (k,v) = line.split()
             self.secrets[k] = v
         self.__authenticateTwitter()
+        ## get largest Id for tweets that came before starting the program
         self.__searchTwitter()
         self.__getLargestTweetId()
 
@@ -43,7 +44,7 @@ class TwitterReceiver(MessageReceiverInterface):
             self.mTwitter = None
             self.twitterAuthenticated = False
 
-    ## get largest Id for tweets that came before starting the program
+    ## get largest Id for tweets in twitterResults
     def __getLargestTweetId(self):
         if (not self.twitterResults is None):
             for tweet in self.twitterResults["statuses"]:
