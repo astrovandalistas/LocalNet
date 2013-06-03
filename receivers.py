@@ -168,16 +168,17 @@ class TwitterReceiver(MessageReceiverInterface):
                 self.twitterResults = None
 
 if __name__=="__main__":
-    o = {}
-    tr = TwitterReceiver()
-    o['twitter'] = tr
-    foo = OscReceiver(o)
-    c = OSCClient()
-    foo.setup(c,"here")
-    tr.setup(c,"here")
+    rcvrs = {}
+    rcvT = TwitterReceiver()
+    rcvrs['twitter'] = rcvT
+    rcvO = OscReceiver(rcvrs)
+    oc = OSCClient()
+    for (k,v) in rcvrs.iteritems():
+        v.setup(oc,"LocalLocalNet")
     try:
         while(True):
-            tr.update()
+            for (k,v) in rcvrs.iteritems():
+                v.update()
             time.sleep(5)
     except KeyboardInterrupt :
-        foo.stop()
+        rcvO.stop()
