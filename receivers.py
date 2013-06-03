@@ -1,13 +1,83 @@
 # -*- coding: latin-1 -*-
 
 from interfaces import MessageReceiverInterface
-import time
+import time, threading
 from twython import Twython
-from OSC import OSCClient, OSCMessage
+from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr
 
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
 
+class HttpReceiver(MessageReceiverInterface):
+    """A class for receiving json/xml query results and passing them to its subscribers"""
+
+class OscReceiver(MessageReceiverInterface):
+    """A class for receiving Osc messages and passing them to its subscribers"""
+    OSC_SERVER_IP = "127.0.0.1"
+    OSC_SERVER_PORT = 8888
+
+    def __init__(self, others):
+        MessageReceiverInterface.__init__(self)
+        ## this is a dict of names to receivers
+        ## like: 'sms' -> SmsReceiver_instance
+        ## keys are used to match against osc requests
+        self.otherReceivers = others
+        self.otherReceivers['osc'] = self
+
+    def __oscHandler(self, addr, tags, stuff, source):
+        addrTokens = addr.lstrip('/').split('/')
+        ## /LocalNet/{Add,Remove}/Type -> port-number
+        if ((addrTokens[0].lower() == "localnet")
+            and (addrTokens[1].lower() == "add")):
+            ip = getUrlStr(source).split(":")[0]
+            port = stuff[0]
+            if (addrTokens[2].lower() in self.otherReceivers):
+                print "adding "+ip+":"+port+" to "+addrTokens[2].lower()+" receivers"
+                self.otherReceivers[addrTokens[2].lower()].addSubscriber((ip,port))
+        elif ((addrTokens[0].lower() == "localnet")
+              and (addrTokens[1].lower() == "remove")):
+            ip = getUrlStr(source).split(":")[0]
+            port = stuff[0]
+            if (addrTokens[2].lower() in self.otherReceivers):
+                print "removing "+ip+" from "+addrTokens[2].lower()+" receivers"
+                self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
+        ## /LocalNet/ListReceivers -> port-number
+        elif ((addrTokens[0].lower() == "localnet")
+              and (addrTokens[1].lower().startswith("list"))):
+            ip = getUrlStr(source).split(":")[0]
+            port = stuff[0]
+            ## send list of receivers to client
+            msg = OSCMessage()
+            msg.setAddress("/LocalNet/Receivers")
+            msg.append(",".join(self.otherReceivers.keys()))
+            self.oscClient.sendto(msg, (ip, int(port)))
+        ## /AEffectLab/{local}/{type} -> msg
+        elif (addrTokens[0].lower() == "aeffectlab"):
+            print "forwarding "+addr+" : "+str(stuff[0])+" to my osc subscribers"
+            ## setup osc message
+            msg = OSCMessage()
+            msg.setAddress("/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2])
+            msg.append(str(stuff[0]))
+            ## send to subscribers
+            for (ip,port) in self.subscriberList:
+                self.oscClient.sendto(msg, (ip, port))
+
+    ## setup osc server
+    def setup(self, osc, loc):
+        self.oscClient = osc
+        self.location = loc
+        self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
+                                    OscReceiver.OSC_SERVER_PORT))
+        ## handler
+        self.oscServer.addMsgHandler('default', self.__oscHandler)
+        ## start server
+        self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
+        self.oscThread.start()
+
+    ## end oscReceiver
+    def stop(self):
+        self.oscServer.close()
+        self.oscThread.join()
 
 class TwitterReceiver(MessageReceiverInterface):
     """A class for receiving Twitter messages and passing them to its
@@ -15,7 +85,7 @@ class TwitterReceiver(MessageReceiverInterface):
     ## How often to check twitter (in seconds)
     TWITTER_CHECK_PERIOD = 6
     ## What to search for
-    SEARCH_TERM = ("#ficaadica OR #BangMTY OR aeLab")
+    SEARCH_TERM = ("#ficaadica OR aeLab")
 
     ## setup twitter connection and internal variables
     def setup(self, osc, loc):
@@ -50,12 +120,12 @@ class TwitterReceiver(MessageReceiverInterface):
                             tweet['user']['screen_name']))
                     ## setup osc message
                     msg = OSCMessage()
-                    msg.setAddress("/AeffectLab/"+self.location+"/Twitter")
+                    msg.setAddress("/AEffectLab/"+self.location+"/Twitter")
                     msg.append(tweet['text'])
                     ## send to subscribers
-                    for subs in self.subscriberList:
-                        (ip,port) = subs
+                    for (ip,port) in self.subscriberList:
                         self.oscClient.sendto(msg, (ip, port))
+                    ## TODO: log on local database
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):
                         self.largestTweetId = int(tweet['id'])
@@ -98,8 +168,16 @@ class TwitterReceiver(MessageReceiverInterface):
                 self.twitterResults = None
 
 if __name__=="__main__":
-    foo = TwitterReceiver()
+    o = {}
+    tr = TwitterReceiver()
+    o['twitter'] = tr
+    foo = OscReceiver(o)
     c = OSCClient()
     foo.setup(c,"here")
-    foo.addSubscriber(('127.0.0.1', 9000))
-    foo.testSend()
+    tr.setup(c,"here")
+    try:
+        while(True):
+            tr.update()
+            time.sleep(5)
+    except KeyboardInterrupt :
+        foo.stop()
