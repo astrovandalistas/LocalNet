@@ -13,9 +13,9 @@ class MessageReceiverInterface:
         print "stop not implemented"
     # Adds a new subscriber to a receiver
     def addSubscriber(self, (ip,port)):
-        self.subscriberList.append((ip,int(port)))
+        if(not (ip,int(port)) in self.subscriberList):
+            self.subscriberList.append((ip,int(port)))
     # Removes subscriber from receiver
     def removeSubscriber(self, (ip,port)):
-        for (i,p) in self.subscriberList:
-            if(ip == i):
-                self.subscriberList.remove((i,p))
+        if((ip,int(port)) in self.subscriberList):
+            self.subscriberList.remove((ip,int(port)))

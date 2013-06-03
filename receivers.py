@@ -39,7 +39,7 @@ class OscReceiver(MessageReceiverInterface):
             ip = getUrlStr(source).split(":")[0]
             port = stuff[0]
             if (addrTokens[2].lower() in self.otherReceivers):
-                print "removing "+ip+" from "+addrTokens[2].lower()+" receivers"
+                print "removing "+ip+":"+port+" from "+addrTokens[2].lower()+" receivers"
                 self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
         ## /LocalNet/ListReceivers -> port-number
         elif ((addrTokens[0].lower() == "localnet")
