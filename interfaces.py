@@ -8,6 +8,9 @@ class MessageReceiverInterface:
     # Checks for new messages
     def update(self):
         print "update not implemented"
+    # Clean up
+    def stop(self):
+        print "stop not implemented"
     # Adds a new subscriber to a receiver
     def addSubscriber(self, (ip,port)):
         self.subscriberList.append((ip,int(port)))

@@ -74,6 +74,10 @@ class OscReceiver(MessageReceiverInterface):
         self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
         self.oscThread.start()
 
+    ## setup osc server
+    def update(self):
+        pass
+
     ## end oscReceiver
     def stop(self):
         self.oscServer.close()
@@ -131,6 +135,10 @@ class TwitterReceiver(MessageReceiverInterface):
                         self.largestTweetId = int(tweet['id'])
             self.lastTwitterCheck = time.time()
 
+    ## end twitterReceiver
+    def stop(self):
+        pass
+
     ## authenticate to twitter using secrets
     def __authenticateTwitter(self):
         try:
@@ -181,4 +189,5 @@ if __name__=="__main__":
                 v.update()
             time.sleep(5)
     except KeyboardInterrupt :
-        rcvO.stop()
+        for (k,v) in rcvrs.iteritems():
+            v.stop()
