@@ -3,7 +3,7 @@
 from interfaces import MessageReceiverInterface
 import time, threading
 from twython import Twython
-from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr
+from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
@@ -45,12 +45,17 @@ class OscReceiver(MessageReceiverInterface):
         elif ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower().startswith("list"))):
             ip = getUrlStr(source).split(":")[0]
-            port = stuff[0]
+            port = int(stuff[0])
             ## send list of receivers to client
             msg = OSCMessage()
             msg.setAddress("/LocalNet/Receivers")
             msg.append(",".join(self.otherReceivers.keys()))
-            self.oscClient.sendto(msg, (ip, int(port)))
+            try:
+                self.oscClient.connect((ip, port))
+                self.oscClient.sendto(msg, (ip, port))
+            except OSCClientError:
+                print ("no connection to "+ip+":"+str(port)
+                       +", can't send list of receivers")
         ## /AEffectLab/{local}/{type} -> msg
         elif (addrTokens[0].lower() == "aeffectlab"):
             print "forwarding "+addr+" : "+str(stuff[0])+" to my osc subscribers"
