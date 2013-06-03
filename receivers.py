@@ -59,8 +59,7 @@ class OscReceiver(MessageReceiverInterface):
             msg.setAddress("/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2])
             msg.append(str(stuff[0]))
             ## send to subscribers
-            for (ip,port) in self.subscriberList:
-                self.oscClient.sendto(msg, (ip, port))
+            self._sendToAllSubscribers(msg)
 
     ## setup osc server
     def setup(self, osc, loc):
@@ -127,8 +126,7 @@ class TwitterReceiver(MessageReceiverInterface):
                     msg.setAddress("/AEffectLab/"+self.location+"/Twitter")
                     msg.append(tweet['text'])
                     ## send to subscribers
-                    for (ip,port) in self.subscriberList:
-                        self.oscClient.sendto(msg, (ip, port))
+                    self._sendToAllSubscribers(msg)
                     ## TODO: log on local database
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):

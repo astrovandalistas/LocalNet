@@ -1,3 +1,6 @@
+from OSC import OSCClientError
+from Queue import Queue
+
 class MessageReceiverInterface:
     """A message receiver interface"""
     # Sets up the stuff a receiver might need
@@ -19,3 +22,17 @@ class MessageReceiverInterface:
     def removeSubscriber(self, (ip,port)):
         if((ip,int(port)) in self.subscriberList):
             self.subscriberList.remove((ip,int(port)))
+    # Sends msg to all subscribers
+    def _sendToAllSubscribers(self, msg):
+        delQ = Queue()
+        for (ip,port) in self.subscriberList:
+            try:
+                self.oscClient.connect((ip, port))
+                self.oscClient.sendto(msg, (ip, port))
+            except OSCClientError:
+                print ("no connection to "+ip+":"+str(port)
+                       +", removing it from osc subscribers")
+                delQ.put((ip,port))
+                continue
+        while (not delQ.empty()):
+            self.removeSubscriber(delQ.get())
