@@ -24,7 +24,7 @@ class OscReceiver(MessageReceiverInterface):
         self.otherReceivers = others
         self.otherReceivers['osc'] = self
 
-    def __oscHandler(self, addr, tags, stuff, source):
+    def _oscHandler(self, addr, tags, stuff, source):
         addrTokens = addr.lstrip('/').split('/')
         ## /LocalNet/{Add,Remove}/Type -> port-number
         if ((addrTokens[0].lower() == "localnet")
@@ -68,7 +68,7 @@ class OscReceiver(MessageReceiverInterface):
         self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
                                     OscReceiver.OSC_SERVER_PORT))
         ## handler
-        self.oscServer.addMsgHandler('default', self.__oscHandler)
+        self.oscServer.addMsgHandler('default', self._oscHandler)
         ## start server
         self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
         self.oscThread.start()
@@ -105,16 +105,16 @@ class TwitterReceiver(MessageReceiverInterface):
         for line in inFile:
             (k,v) = line.split()
             self.secrets[k] = v
-        self.__authenticateTwitter()
+        self._authenticateTwitter()
         ## get largest Id for tweets that came before starting the program
-        self.__searchTwitter()
-        self.__getLargestTweetId()
+        self._searchTwitter()
+        self._getLargestTweetId()
         self.twitterResults = None
 
     ## check for new tweets every once in a while
     def update(self):
         if (time.time() - self.lastTwitterCheck > TwitterReceiver.TWITTER_CHECK_PERIOD):
-            self.__searchTwitter()
+            self._searchTwitter()
             if (not self.twitterResults is None):
                 for tweet in self.twitterResults["statuses"]:
                     ## print
@@ -138,7 +138,7 @@ class TwitterReceiver(MessageReceiverInterface):
         pass
 
     ## authenticate to twitter using secrets
-    def __authenticateTwitter(self):
+    def _authenticateTwitter(self):
         try:
             self.mTwitter = Twython(twitter_token = self.secrets['CONSUMER_KEY'],
                                     twitter_secret = self.secrets['CONSUMER_SECRET'],
@@ -150,7 +150,7 @@ class TwitterReceiver(MessageReceiverInterface):
             self.twitterAuthenticated = False
 
     ## get largest Id for tweets in twitterResults
-    def __getLargestTweetId(self):
+    def _getLargestTweetId(self):
         if (not self.twitterResults is None):
             for tweet in self.twitterResults["statuses"]:
                 print ("Tweet %s from @%s at %s" %
@@ -162,7 +162,7 @@ class TwitterReceiver(MessageReceiverInterface):
                     self.largestTweetId = int(tweet['id'])
 
     ## query twitter
-    def __searchTwitter(self):
+    def _searchTwitter(self):
         if ((self.twitterAuthenticated) and (not self.mTwitter is None)):
             try:
                 self.twitterResults = self.mTwitter.search(q=TwitterReceiver.SEARCH_TERM,
