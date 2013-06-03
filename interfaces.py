@@ -9,11 +9,10 @@ class MessageReceiverInterface:
     def update(self):
         print "update not implemented"
     # Adds a new subscriber to a receiver
-    def addSubscriber(self, ip):
-        self.subscriberList.append(ip)
+    def addSubscriber(self, (ip,port)):
+        self.subscriberList.append((ip,int(port)))
     # Removes subscriber from receiver
-    def removeSubscriber(self, ip):
-        try:
-            self.subscriberList.remove(ip)
-        except:
-            pass
+    def removeSubscriber(self, (ip,port)):
+        for (i,p) in self.subscriberList:
+            if(ip == i):
+                self.subscriberList.remove((i,p))
