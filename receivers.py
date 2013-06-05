@@ -5,11 +5,11 @@ import time, threading
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 
-class SmsReceiver(MessageReceiverInterface):
-    """A class for receiving SMS messages and passing them to its subscribers"""
-
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
+
+class SmsReceiver(MessageReceiverInterface):
+    """A class for receiving SMS messages and passing them to its subscribers"""
 
 class OscReceiver(MessageReceiverInterface):
     """A class for receiving Osc messages and passing them to its subscribers"""
@@ -78,7 +78,7 @@ class OscReceiver(MessageReceiverInterface):
         self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
         self.oscThread.start()
 
-    ## setup osc server
+    ## update osc server
     def update(self):
         pass
 
