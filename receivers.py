@@ -4,12 +4,35 @@ from interfaces import MessageReceiverInterface
 import time, threading
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
+from humod import Modem, actions
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
 
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
+
+    ## Handler for new sms messages
+    def _smsHandler(self, modem, message):
+        print "new message: %r" % message
+        ## TODO: fill this out
+
+    ## setup gsm modem
+    def setup(self, osc, loc):
+        self.oscClient = osc
+        self.location = loc
+        ## setup modem for sms receiver
+        mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
+        self.modem = Modem()
+        self.modem.enable_nmi(True)
+        self.modem.prober.start(mActions)
+
+    def update():
+        pass
+
+    ## end sms receiver
+    def stop(self):
+        self.modem.prober.stop()
 
 class OscReceiver(MessageReceiverInterface):
     """A class for receiving Osc messages and passing them to its subscribers"""
@@ -180,8 +203,10 @@ class TwitterReceiver(MessageReceiverInterface):
 
 if __name__=="__main__":
     rcvrs = {}
-    rcvT = TwitterReceiver()
-    rcvrs['twitter'] = rcvT
+    ##rcvT = TwitterReceiver()
+    ##rcvrs['twitter'] = rcvT
+    rcvS = SmsReceiver()
+    rcvrs['sms'] = rcvS
     rcvO = OscReceiver(rcvrs)
     oc = OSCClient()
     for (k,v) in rcvrs.iteritems():
