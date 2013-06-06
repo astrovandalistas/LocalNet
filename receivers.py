@@ -166,7 +166,7 @@ class TwitterReceiver(MessageReceiverInterface):
                             tweet['user']['screen_name']))
                     ## setup osc message
                     msg = OSCMessage()
-                    msg.setAddress("/AEffectLab/"+self.location+"/Twitter")
+                    msg.setAddress("/AEffectLab/"+self.location+"/twitter")
                     ## TODO: send byte blob
                     msg.append(tweet['text'])
                     ## send to subscribers
