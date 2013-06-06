@@ -5,7 +5,7 @@ import time, threading
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
-from humod import Modem, actions
+from humod import Modem, actions, errors
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
@@ -39,6 +39,9 @@ class SmsReceiver(MessageReceiverInterface):
             self.modem.prober.start(mActions)
         except SerialException:
             print "No GSM modem detected, sorry"
+            self.modemReady = False
+        except errors.AtCommandError:
+            print "No SIM card detected, sorry"
             self.modemReady = False
 
     def update(self):
