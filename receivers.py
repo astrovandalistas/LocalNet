@@ -13,15 +13,29 @@ class HttpReceiver(MessageReceiverInterface):
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
 
+    ## decoder for sms message
+    def _decodeSms(self, sms):
+        out = ""
+        if(sms.startswith("00")):
+            for c in sms.decode('hex'):
+                out += c.decode('latin-1')
+        else:
+            out += sms
+        return out
+
     ## Handler for new sms messages
     def _smsHandler(self, modem, message):
-        print "new message: %r" % message
+        ml = message.strip('\r\t\n').split(',')
+        print "reading message #"+str(ml[-1])+"#"
+        smsTxt = self.modem.sms_read(int(ml[-1]))
+        print "received: "+smsTxt
+        self.modem.sms_del(int(ml[-1]))
+        smsTxt = self._decodeSms(smsTxt)
         ## setup osc message
         msg = OSCMessage()
         msg.setAddress("/AEffectLab/"+self.location+"/sms")
-        ## TODO: parse message
         ## TODO: send byte blob
-        msg.append("message text here")
+        msg.append(smsTxt)
         ## send to subscribers
         self._sendToAllSubscribers(msg)
         ## TODO: log on local database
@@ -35,6 +49,7 @@ class SmsReceiver(MessageReceiverInterface):
         mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
         try:
             self.modem = Modem()
+            self.modem.enable_textmode(True)
             self.modem.enable_nmi(True)
             self.modem.prober.start(mActions)
         except SerialException:
