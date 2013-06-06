@@ -4,6 +4,7 @@ from interfaces import MessageReceiverInterface
 import time, threading
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
+from serial import SerialException
 from humod import Modem, actions
 
 class HttpReceiver(MessageReceiverInterface):
@@ -15,24 +16,38 @@ class SmsReceiver(MessageReceiverInterface):
     ## Handler for new sms messages
     def _smsHandler(self, modem, message):
         print "new message: %r" % message
-        ## TODO: fill this out
+        ## setup osc message
+        msg = OSCMessage()
+        msg.setAddress("/AEffectLab/"+self.location+"/sms")
+        ## TODO: parse message
+        ## TODO: send byte blob
+        msg.append("message text here")
+        ## send to subscribers
+        self._sendToAllSubscribers(msg)
+        ## TODO: log on local database
 
     ## setup gsm modem
     def setup(self, osc, loc):
         self.oscClient = osc
         self.location = loc
+        self.modemReady = True
         ## setup modem for sms receiver
         mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
-        self.modem = Modem()
-        self.modem.enable_nmi(True)
-        self.modem.prober.start(mActions)
+        try:
+            self.modem = Modem()
+            self.modem.enable_nmi(True)
+            self.modem.prober.start(mActions)
+        except SerialException:
+            print "No GSM modem detected, sorry"
+            self.modemReady = False
 
-    def update():
+    def update(self):
         pass
 
     ## end sms receiver
     def stop(self):
-        self.modem.prober.stop()
+        if(self.modemReady):
+            self.modem.prober.stop()
 
 class OscReceiver(MessageReceiverInterface):
     """A class for receiving Osc messages and passing them to its subscribers"""
@@ -152,6 +167,7 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## setup osc message
                     msg = OSCMessage()
                     msg.setAddress("/AEffectLab/"+self.location+"/Twitter")
+                    ## TODO: send byte blob
                     msg.append(tweet['text'])
                     ## send to subscribers
                     self._sendToAllSubscribers(msg)
