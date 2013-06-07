@@ -3,7 +3,7 @@
 from interfaces import MessageReceiverInterface
 import time, threading
 from twython import Twython
-from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
+from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError, OSCBlob
 from serial import SerialException
 from humod import Modem, actions, errors
 
@@ -28,14 +28,14 @@ class SmsReceiver(MessageReceiverInterface):
         ml = message.strip('\r\t\n').split(',')
         print "reading message #"+str(ml[-1])+"#"
         smsTxt = self.modem.sms_read(int(ml[-1]))
-        print "received: "+smsTxt
         self.modem.sms_del(int(ml[-1]))
         smsTxt = self._decodeSms(smsTxt)
+        print "received: "+smsTxt
         ## setup osc message
         msg = OSCMessage()
         msg.setAddress("/AEffectLab/"+self.location+"/sms")
-        ## TODO: send byte blob
-        msg.append(smsTxt)
+        ## Send utf-8 byte blob
+        msg.append(smsTxt.encode('utf-8'), 'b')
         ## send to subscribers
         self._sendToAllSubscribers(msg)
         ## TODO: log on local database
@@ -114,11 +114,13 @@ class OscReceiver(MessageReceiverInterface):
                        +", can't send list of receivers")
         ## /AEffectLab/{local}/{type} -> msg
         elif (addrTokens[0].lower() == "aeffectlab"):
-            print "forwarding "+addr+" : "+str(stuff[0])+" to my osc subscribers"
+            oscTxt = stuff[0].decode('utf-8')
+            print "forwarding "+addr+" : "+oscTxt+" to my osc subscribers"
             ## setup osc message
             msg = OSCMessage()
             msg.setAddress("/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2])
-            msg.append(str(stuff[0]))
+            ## Send utf-8 byte blob
+            msg.append(oscTxt.encode('utf-8'), 'b')
             ## send to subscribers
             self._sendToAllSubscribers(msg)
 
@@ -149,7 +151,7 @@ class TwitterReceiver(MessageReceiverInterface):
     ## How often to check twitter (in seconds)
     TWITTER_CHECK_PERIOD = 6
     ## What to search for
-    SEARCH_TERM = ("#ficaadica OR aeLab")
+    SEARCH_TERM = ("#aeLab")
 
     ## setup twitter connection and internal variables
     def setup(self, osc, loc):
@@ -185,8 +187,8 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## setup osc message
                     msg = OSCMessage()
                     msg.setAddress("/AEffectLab/"+self.location+"/twitter")
-                    ## TODO: send byte blob
-                    msg.append(tweet['text'])
+                    ## Send utf-8 byte blob
+                    msg.append(tweet['text'].encode('utf-8'),'b')
                     ## send to subscribers
                     self._sendToAllSubscribers(msg)
                     ## TODO: log on local database
@@ -237,8 +239,8 @@ class TwitterReceiver(MessageReceiverInterface):
 
 if __name__=="__main__":
     rcvrs = {}
-    ##rcvT = TwitterReceiver()
-    ##rcvrs['twitter'] = rcvT
+    rcvT = TwitterReceiver()
+    rcvrs['twitter'] = rcvT
     rcvS = SmsReceiver()
     rcvrs['sms'] = rcvS
     rcvO = OscReceiver(rcvrs)
