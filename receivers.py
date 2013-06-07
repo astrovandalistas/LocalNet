@@ -1,4 +1,4 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 
 from interfaces import MessageReceiverInterface
 import time, threading
