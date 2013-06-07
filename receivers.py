@@ -3,7 +3,7 @@
 from interfaces import MessageReceiverInterface
 import time, threading
 from twython import Twython
-from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError, OSCBlob
+from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
 from humod import Modem, actions, errors
 
