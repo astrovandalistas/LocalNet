@@ -1,34 +1,64 @@
 # -*- coding: utf-8 -*-
 
 import time
-from OSC import OSCClient
+from Queue import Queue
+from OSC import OSCClient, OSCMessage, OSCClientError
 from receivers import TwitterReceiver, SmsReceiver, OscReceiver
 
 # these will probably be command line arguments
 LOCAL_NET_LOCALE = "Five42"
 
 def setup():
-    global receivers, prototypes
+    global receivers, prototypes, mOscClient
+    global lastPrototypeCheck, oscPingMessage
     receivers = {}
     prototypes = {}
+    lastPrototypeCheck = time.time()
+    oscPingMessage = OSCMessage()
+    oscPingMessage.setAddress("/LocalNet/Ping")
+    ## use empty byte blob
+    oscPingMessage.append("", 'b')
+
+    ## init receivers
     rcvT = TwitterReceiver()
     receivers['twitter'] = rcvT
-    #rcvS = SmsReceiver()
-    #receivers['sms'] = rcvS
+    rcvS = SmsReceiver()
+    receivers['sms'] = rcvS
     rcvO = OscReceiver(receivers,prototypes)
-    oc = OSCClient()
+    mOscClient = OSCClient()
     for (k,v) in receivers.iteritems():
-        v.setup(oc,LOCAL_NET_LOCALE)
+        v.setup(mOscClient, LOCAL_NET_LOCALE)
 
 def loop():
     for (k,v) in receivers.iteritems():
         v.update()
 
+def checkPrototypes():
+    print "checking prots"
+    delQ = Queue()
+    for (ip,port) in prototypes:
+        try:
+            mOscClient.connect((ip, int(port)))
+            mOscClient.sendto(oscPingMessage, (ip, int(port)))
+        except OSCClientError:
+            print ("no connection to "+ip+":"+str(port)
+                    +", removing it from list of prototypes")
+            delQ.put((ip,port))
+            continue
+    while (not delQ.empty()):
+        (ip,port) = delQ.get()
+        if((ip,port) in prototypes):
+            del prototypes[(ip,port)]
+
 if __name__=="__main__":
     setup()
     try:
         while(True):
-            ## TODO: check prots every N seconds
+            ## check prototype connection every 30 seconds
+            if(time.time()-lastPrototypeCheck > 30):
+                checkPrototypes()
+                lastPrototypeCheck = time.time()
+
             ## keep it from looping faster than ~60 times per second
             loopStart = time.time()
             loop()
