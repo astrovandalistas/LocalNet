@@ -72,13 +72,16 @@ class OscReceiver(MessageReceiverInterface):
     OSC_SERVER_IP = "127.0.0.1"
     OSC_SERVER_PORT = 8888
 
-    def __init__(self, others):
+    def __init__(self, others, protos):
         MessageReceiverInterface.__init__(self)
         ## this is a dict of names to receivers
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
         self.otherReceivers = others
         self.otherReceivers['osc'] = self
+        ## this is a dict of (ip,port) -> prototype
+        ## like: (192.168.2.5, 8888) -> megavoice
+        self.allPrototypes = protos
 
     def _oscHandler(self, addr, tags, stuff, source):
         addrTokens = addr.lstrip('/').split('/')
@@ -87,9 +90,10 @@ class OscReceiver(MessageReceiverInterface):
             and (addrTokens[1].lower() == "add")):
             ip = getUrlStr(source).split(":")[0]
             port = stuff[0]
-            if (addrTokens[2].lower() in self.otherReceivers):
-                print "adding "+ip+":"+port+" to "+addrTokens[2].lower()+" receivers"
-                self.otherReceivers[addrTokens[2].lower()].addSubscriber((ip,port))
+            self.allPrototypes[(ip,port)] = addrTokens[2]
+            if (addrTokens[3].lower() in self.otherReceivers):
+                print "adding "+ip+":"+port+" to "+addrTokens[3].lower()+" receivers"
+                self.otherReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
         elif ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "remove")):
             ip = getUrlStr(source).split(":")[0]
@@ -97,9 +101,13 @@ class OscReceiver(MessageReceiverInterface):
             if (addrTokens[2].lower() in self.otherReceivers):
                 print "removing "+ip+":"+port+" from "+addrTokens[2].lower()+" receivers"
                 self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
+            if ((ip,port) in self.allPrototypes):
+                print("removing "+self.allPrototypes[(ip,port)]+" @ "+ip+":"+port
+                      +" from list of prototypes")
+                del self.allPrototypes[(ip,port)]
         ## /LocalNet/ListReceivers -> port-number
         elif ((addrTokens[0].lower() == "localnet")
-              and (addrTokens[1].lower().startswith("list"))):
+              and (addrTokens[1].lower().startswith("listreceiver"))):
             ip = getUrlStr(source).split(":")[0]
             port = int(stuff[0])
             ## send list of receivers to client
@@ -112,6 +120,22 @@ class OscReceiver(MessageReceiverInterface):
             except OSCClientError:
                 print ("no connection to "+ip+":"+str(port)
                        +", can't send list of receivers")
+        ## /LocalNet/ListReceivers -> port-number
+        elif ((addrTokens[0].lower() == "localnet")
+              and (addrTokens[1].lower().startswith("listprototype"))):
+            ip = getUrlStr(source).split(":")[0]
+            port = int(stuff[0])
+            ## send list of prototypes to client
+            msg = OSCMessage()
+            msg.setAddress("/LocalNet/Prototypes")
+            msg.append(",".join(self.allPrototypes.values()))
+            try:
+                self.oscClient.connect((ip, port))
+                self.oscClient.sendto(msg, (ip, port))
+            except OSCClientError:
+                print ("no connection to "+ip+":"+str(port)
+                       +", can't send list of prototypes")
+
         ## /AEffectLab/{local}/{type} -> msg
         elif (addrTokens[0].lower() == "aeffectlab"):
             oscTxt = stuff[0].decode('utf-8')
@@ -239,11 +263,12 @@ class TwitterReceiver(MessageReceiverInterface):
 
 if __name__=="__main__":
     rcvrs = {}
+    prots = {}
     rcvT = TwitterReceiver()
     rcvrs['twitter'] = rcvT
     rcvS = SmsReceiver()
     rcvrs['sms'] = rcvS
-    rcvO = OscReceiver(rcvrs)
+    rcvO = OscReceiver(rcvrs,prots)
     oc = OSCClient()
     for (k,v) in rcvrs.iteritems():
         v.setup(oc,"LocalLocalNet")
