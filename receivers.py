@@ -215,10 +215,10 @@ class TwitterReceiver(MessageReceiverInterface):
                     msg.append(tweet['text'].encode('utf-8'),'b')
                     ## send to subscribers
                     self._sendToAllSubscribers(msg)
-                    ## TODO: log on local database
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):
                         self.largestTweetId = int(tweet['id'])
+                    ## TODO: log on local database
             self.lastTwitterCheck = time.time()
 
     ## end twitterReceiver
