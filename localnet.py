@@ -26,8 +26,13 @@ def setup():
     receivers['sms'] = rcvS
     rcvO = OscReceiver(receivers,prototypes)
     mOscClient = OSCClient()
+    setupDelQ = Queue()
     for (k,v) in receivers.iteritems():
-        v.setup(mOscClient, LOCAL_NET_LOCALE)
+        if(not v.setup(mOscClient, LOCAL_NET_LOCALE)):
+            setupDelQ.put(k)
+    while (not setupDelQ.empty()):
+        badReceiver = setupDelQ.get()
+        del receivers[badReceiver]
 
 def loop():
     for (k,v) in receivers.iteritems():
