@@ -55,9 +55,13 @@ class SmsReceiver(MessageReceiverInterface):
         except SerialException:
             print "No GSM modem detected, sorry"
             self.modemReady = False
+            return self.modemReady
         except errors.AtCommandError:
             print "No SIM card detected, sorry"
             self.modemReady = False
+            return self.modemReady
+        ## return
+        return self.modemReady
 
     def update(self):
         pass
@@ -159,6 +163,8 @@ class OscReceiver(MessageReceiverInterface):
         ## start server
         self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
         self.oscThread.start()
+        ## return
+        return True
 
     ## update osc server
     def update(self):
@@ -197,6 +203,8 @@ class TwitterReceiver(MessageReceiverInterface):
         self._searchTwitter()
         self._getLargestTweetId()
         self.twitterResults = None
+        ## return
+        return self.twitterAuthenticated
 
     ## check for new tweets every once in a while
     def update(self):
