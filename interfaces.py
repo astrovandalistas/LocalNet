@@ -30,10 +30,9 @@ class PrototypeInterface:
                 self.allReceivers[rcvr] = rcvr
         ## actual message from AEffect Network !!
         elif (addrTokens[0].lower() == "aeffectlab"):
-            locale = addrTokens[1]
-            type = addrTokens[2]
-            msg = stuff[0]
-            ## TODO: parse and put these in self.messageQ(locale,type,msg)
+            self.messageQ.put((addrTokens[1],
+                               addrTokens[2],
+                               stuff[0].decode('utf-8')))
 
     def __init__(self,inport,outip,outport):
         ## administrative: names and ports
@@ -85,8 +84,9 @@ class PrototypeInterface:
             print "subs to:"+rcvr
             self.subscribeTo(rcvr)
 
-    ## TODO: def subscribeTo(name)
-    ##     put in self.subscribedReceivers
+    def subscribeTo(self,name):
+        ## TODO: put in self.subscribedReceivers
+        pass
 
     def setup(self):
         print "setup not implemented"
