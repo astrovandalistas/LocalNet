@@ -68,25 +68,32 @@ class PrototypeInterface:
         ## disconnect from LocalNet
         for rcvr in self.subscribedReceivers.keys():
             msg = OSCMessage()
-            msg.setAddress("/LocalNet/Remove/"+str(rcvr))
+            msg.setAddress("/LocalNet/Remove/"+rcvr)
             msg.append(self.inPort)
             try:
                 self.oscClient.send(msg)
             except OSCClientError:
-                print ("no connection to "+self.localNetAddress
-                        +", can't disconnect from receivers")
+                print ("no connection to %s, can't disconnect from receivers"
+                       %(self.localNetAddress,))
         ## close osc
         self.oscServer.close()
         self.oscThread.join()
 
     def subscribeToAll(self):
         for rcvr in self.allReceivers.keys():
-            print "subs to:"+rcvr
             self.subscribeTo(rcvr)
 
-    def subscribeTo(self,name):
-        ## TODO: put in self.subscribedReceivers
-        pass
+    def subscribeTo(self,rcvr):
+        msg = OSCMessage()
+        msg.setAddress("/LocalNet/Add/"+self.name+"/"+rcvr)
+        msg.append(self.inPort)
+        try:
+            self.oscClient.send(msg)
+        except OSCClientError:
+            print ("no connection to %s, can't subscribe to %s receiver"
+                   %(self.localNetAddress,) %rcvr)
+        else:
+            self.subscribedReceivers[rcvr] = rcvr
 
     def setup(self):
         print "setup not implemented"
