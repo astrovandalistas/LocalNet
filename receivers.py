@@ -105,7 +105,11 @@ class OscReceiver(MessageReceiverInterface):
             if (addrTokens[2].lower() in self.otherReceivers):
                 print "removing "+ip+":"+str(port)+" from "+addrTokens[2].lower()+" receivers"
                 self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
-            if ((ip,port) in self.allPrototypes):
+            ## only remove from list of prototypes when not in any receiver...
+            inSomeSubscriber = False
+            for k in self.otherReceivers:
+                inSomeSubscriber |= self.otherReceivers[k].hasSubscriber((ip,port))
+            if ((not inSomeSubscriber) and ((ip,port) in self.allPrototypes)):
                 print("removing "+self.allPrototypes[(ip,port)]+" @ "+ip+":"+str(port)
                       +" from list of prototypes")
                 del self.allPrototypes[(ip,port)]

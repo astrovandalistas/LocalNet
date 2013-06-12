@@ -121,6 +121,9 @@ class MessageReceiverInterface:
     def removeSubscriber(self, (ip,port)):
         if((ip,int(port)) in self.subscriberList):
             self.subscriberList.remove((ip,int(port)))
+    # Checks if it has specific subscriber
+    def hasSubscriber(self, (ip,port)):
+        return ((ip,port) in self.subscriberList)
     # Sends msg to all subscribers
     def _sendToAllSubscribers(self, msg):
         delQ = Queue()
