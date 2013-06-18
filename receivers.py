@@ -93,20 +93,24 @@ class OscReceiver(MessageReceiverInterface):
         if ((addrTokens[0].lower() == "localnet")
             and (addrTokens[1].lower() == "add")):
             ip = getUrlStr(source).split(":")[0]
-            port = stuff[0]
+            port = int(stuff[0])
             self.allPrototypes[(ip,port)] = addrTokens[2]
             if (addrTokens[3].lower() in self.otherReceivers):
-                print "adding "+ip+":"+port+" to "+addrTokens[3].lower()+" receivers"
+                print "adding "+ip+":"+str(port)+" to "+addrTokens[3].lower()+" receivers"
                 self.otherReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
         elif ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "remove")):
             ip = getUrlStr(source).split(":")[0]
-            port = stuff[0]
+            port = int(stuff[0])
             if (addrTokens[2].lower() in self.otherReceivers):
-                print "removing "+ip+":"+port+" from "+addrTokens[2].lower()+" receivers"
+                print "removing "+ip+":"+str(port)+" from "+addrTokens[2].lower()+" receivers"
                 self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
-            if ((ip,port) in self.allPrototypes):
-                print("removing "+self.allPrototypes[(ip,port)]+" @ "+ip+":"+port
+            ## only remove from list of prototypes when not in any receiver...
+            inSomeSubscriber = False
+            for k in self.otherReceivers:
+                inSomeSubscriber |= self.otherReceivers[k].hasSubscriber((ip,port))
+            if ((not inSomeSubscriber) and ((ip,port) in self.allPrototypes)):
+                print("removing "+self.allPrototypes[(ip,port)]+" @ "+ip+":"+str(port)
                       +" from list of prototypes")
                 del self.allPrototypes[(ip,port)]
         ## /LocalNet/ListReceivers -> port-number
