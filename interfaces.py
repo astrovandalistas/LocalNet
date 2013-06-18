@@ -1,4 +1,4 @@
-import time, threading
+import time, threading, string
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from Queue import Queue
 
@@ -20,7 +20,10 @@ class PrototypeInterface:
     """ prototype interface:
         all prototypes must implement setup() and loop() functions
         self.messageQ will have all messages coming in from LocalNet
+        in the format (locale,type,text)
         this also implements subscribeToAll() and subscribeTo(name) """
+    def removeNonAscii(self, s):
+        return "".join(i for i in s if i in string.printable)
     def _oscHandler(self, addr, tags, stuff, source):
         addrTokens = addr.lstrip('/').split('/')
         ## list of all receivers
