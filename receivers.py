@@ -102,7 +102,7 @@ class OscReceiver(MessageReceiverInterface):
             ip = getUrlStr(source).split(":")[0]
             port = int(stuff[0])
             self.allPrototypes[(ip,port)] = addrTokens[2]
-            if (addrTokens[3].lower() in self.otherReceivers):
+            if (addrTokens[3].lower() in self.allReceivers):
                 print "adding "+ip+":"+str(port)+" to "+addrTokens[3].lower()+" receivers"
                 self.allReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
         elif ((addrTokens[0].lower() == "localnet")
