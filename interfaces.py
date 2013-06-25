@@ -108,7 +108,7 @@ class MessageReceiverInterface:
     # Sets up the stuff a receiver might need
     def __init__(self):
         self.subscriberList = []
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
         print "setup not implemented"
     # Checks for new messages
     def update(self):

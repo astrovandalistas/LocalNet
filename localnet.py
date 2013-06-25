@@ -4,9 +4,11 @@ import time
 from Queue import Queue
 from OSC import OSCClient, OSCMessage, OSCClientError
 from receivers import TwitterReceiver, SmsReceiver, OscReceiver
+from peewee import *
 
 # these will probably be command line arguments
 LOCAL_NET_LOCALE = "Five42"
+# TODO: set osc port and twitter hashtags here
 
 def setup():
     global receivers, prototypes, mOscClient
@@ -19,6 +21,23 @@ def setup():
     ## use empty byte blob
     oscPingMessage.append("", 'b')
 
+    ## init database
+    class Message(Model):
+        time = DateTimeField()
+        text = BlobField()
+        receiver = CharField()
+
+    try:
+        Message.create_table()
+    except:
+        print "tried to recreate message table, pero no pasa nada"
+
+    print "message table has %s entries" % Message.select().count()
+    """
+    for m in Message.select():
+        print "%s %s" % (m.time, str(m.text).decode('utf-8'))
+    """
+
     ## init receivers
     rcvT = TwitterReceiver()
     receivers['twitter'] = rcvT
@@ -28,7 +47,7 @@ def setup():
     mOscClient = OSCClient()
     setupDelQ = Queue()
     for (k,v) in receivers.iteritems():
-        if(not v.setup(mOscClient, LOCAL_NET_LOCALE)):
+        if(not v.setup(Message, mOscClient, LOCAL_NET_LOCALE)):
             setupDelQ.put(k)
     while (not setupDelQ.empty()):
         badReceiver = setupDelQ.get()

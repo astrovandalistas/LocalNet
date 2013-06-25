@@ -2,10 +2,12 @@
 
 from interfaces import MessageReceiverInterface
 import time, threading
+from datetime import datetime
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
 from humod import Modem, actions, errors
+from peewee import *
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
@@ -38,10 +40,14 @@ class SmsReceiver(MessageReceiverInterface):
         msg.append(smsTxt.encode('utf-8'), 'b')
         ## send to subscribers
         self._sendToAllSubscribers(msg)
-        ## TODO: log on local database
+        ## log onto local database
+        self.database.create(time=datetime.fromtimestamp(time.time()),
+                             text=smsTxt.encode('utf-8'),
+                             receiver="sms")
 
     ## setup gsm modem
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
         self.modemReady = True
@@ -157,7 +163,8 @@ class OscReceiver(MessageReceiverInterface):
             self._sendToAllSubscribers(msg)
 
     ## setup osc server
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
         self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
@@ -188,7 +195,8 @@ class TwitterReceiver(MessageReceiverInterface):
     SEARCH_TERM = ("#aeLab")
 
     ## setup twitter connection and internal variables
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
         self.lastTwitterCheck = time.time()
@@ -230,7 +238,10 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):
                         self.largestTweetId = int(tweet['id'])
-                    ## TODO: log on local database
+                    ## log onto local database
+                    self.database.create(time=datetime.fromtimestamp(time.time()),
+                                         text=tweet['text'].encode('utf-8'),
+                                         receiver="twitter")
             self.lastTwitterCheck = time.time()
 
     ## end twitterReceiver
