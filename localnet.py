@@ -7,8 +7,9 @@ from receivers import TwitterReceiver, SmsReceiver, OscReceiver
 from peewee import *
 
 # these will probably be command line arguments
+# TODO: set twitter hashtags here
 LOCAL_NET_LOCALE = "Five42"
-# TODO: set osc port and twitter hashtags here
+OSC_SERVER_PORT = 8888
 
 def setup():
     global receivers, prototypes, mOscClient
@@ -35,7 +36,7 @@ def setup():
     print "message table has %s entries" % Message.select().count()
     """
     for m in Message.select():
-        print "%s %s" % (m.time, str(m.text).decode('utf-8'))
+        print "%s %s [%s]" % (m.time, str(m.text).decode('utf-8'), m.receiver)
     """
 
     ## init receivers
@@ -43,7 +44,7 @@ def setup():
     receivers['twitter'] = rcvT
     rcvS = SmsReceiver()
     receivers['sms'] = rcvS
-    rcvO = OscReceiver(receivers,prototypes)
+    rcvO = OscReceiver(receivers,prototypes, port=OSC_SERVER_PORT)
     mOscClient = OSCClient()
     setupDelQ = Queue()
     for (k,v) in receivers.iteritems():
