@@ -33,13 +33,8 @@ class SmsReceiver(MessageReceiverInterface):
         self.modem.sms_del(int(ml[-1]))
         smsTxt = self._decodeSms(smsTxt)
         print "received: "+smsTxt
-        ## setup osc message
-        msg = OSCMessage()
-        msg.setAddress("/AEffectLab/"+self.location+"/sms")
-        ## Send utf-8 byte blob
-        msg.append(smsTxt.encode('utf-8'), 'b')
-        ## send to subscribers
-        self._sendToAllSubscribers(msg)
+        ## send to all subscribers
+        self.sendToAllSubscribers(smsTxt)
         ## log onto local database
         self.database.create(time=datetime.fromtimestamp(time.time()),
                              text=smsTxt.encode('utf-8'),
@@ -50,6 +45,7 @@ class SmsReceiver(MessageReceiverInterface):
         self.database = db
         self.oscClient = osc
         self.location = loc
+        self.name = "sms"
         self.modemReady = True
         ## setup modem for sms receiver
         mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
@@ -154,19 +150,16 @@ class OscReceiver(MessageReceiverInterface):
         elif (addrTokens[0].lower() == "aeffectlab"):
             oscTxt = stuff[0].decode('utf-8')
             print "forwarding "+addr+" : "+oscTxt+" to my osc subscribers"
-            ## setup osc message
-            msg = OSCMessage()
-            msg.setAddress("/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2])
-            ## Send utf-8 byte blob
-            msg.append(oscTxt.encode('utf-8'), 'b')
-            ## send to subscribers
-            self._sendToAllSubscribers(msg)
+            ## send to all subscribers
+            addr = "/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2]
+            self.sendToAllSubscribers(oscTxt, addr)
 
     ## setup osc server
     def setup(self, db, osc, loc):
         self.database = db
         self.oscClient = osc
         self.location = loc
+        self.name = "osc"
         self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
                                     OscReceiver.OSC_SERVER_PORT))
         ## handler
@@ -199,6 +192,7 @@ class TwitterReceiver(MessageReceiverInterface):
         self.database = db
         self.oscClient = osc
         self.location = loc
+        self.name = "twitter"
         self.lastTwitterCheck = time.time()
         self.mTwitter = None
         self.twitterAuthenticated = False
@@ -224,20 +218,14 @@ class TwitterReceiver(MessageReceiverInterface):
             self._searchTwitter()
             if (not self.twitterResults is None):
                 for tweet in self.twitterResults["statuses"]:
-                    ## print
-                    print ("pushing %s from @%s" %
-                           (tweet['text'],
-                            tweet['user']['screen_name']))
-                    ## setup osc message
-                    msg = OSCMessage()
-                    msg.setAddress("/AEffectLab/"+self.location+"/twitter")
-                    ## Send utf-8 byte blob
-                    msg.append(tweet['text'].encode('utf-8'),'b')
-                    ## send to subscribers
-                    self._sendToAllSubscribers(msg)
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):
                         self.largestTweetId = int(tweet['id'])
+                    ## print
+                    print ("pushing %s from @%s" %
+                           (tweet['text'], tweet['user']['screen_name']))
+                    ## send to all subscribers
+                    self.sendToAllSubscribers(tweet['text'])
                     ## log onto local database
                     self.database.create(time=datetime.fromtimestamp(time.time()),
                                          text=tweet['text'].encode('utf-8'),
