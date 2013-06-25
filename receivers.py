@@ -77,17 +77,17 @@ class SmsReceiver(MessageReceiverInterface):
 
 class OscReceiver(MessageReceiverInterface):
     """A class for receiving Osc messages and passing them to its subscribers"""
-    OSC_SERVER_IP = "127.0.0.1"
-    OSC_SERVER_PORT = 8888
-
-    def __init__(self, others, protos):
+    def __init__(self, others, protos, ip="127.0.0.1", port=8888):
         MessageReceiverInterface.__init__(self)
+        self.oscServerIp = ip
+        self.oscServerPort = port
         ## this is a dict of names to receivers
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
         self.allReceivers = others
-        ## TODO: add osc receiver as a subscriber to all other receivers
-        ##       to enable osc forwarding
+        ## to enable osc forwarding, add osc server as subscriber to all receivers
+        for k in self.allReceivers:
+            self.allReceivers[k].addSubscriber((self.oscServerIp,self.oscServerPort))
         ## add osc receiver to 
         self.allReceivers['osc'] = self
         ## this is a dict of (ip,port) -> prototype
@@ -167,8 +167,7 @@ class OscReceiver(MessageReceiverInterface):
         self.oscClient = osc
         self.location = loc
         self.name = "osc"
-        self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
-                                    OscReceiver.OSC_SERVER_PORT))
+        self.oscServer = OSCServer((self.oscServerIp,self.oscServerPort))
         ## handler
         self.oscServer.addMsgHandler('default', self._oscHandler)
         ## start server
