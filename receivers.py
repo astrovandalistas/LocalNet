@@ -39,6 +39,8 @@ class SmsReceiver(MessageReceiverInterface):
         self.database.create(time=datetime.fromtimestamp(time.time()),
                              text=smsTxt.encode('utf-8'),
                              receiver="sms")
+        ## update timer
+        self.lastMessageTime = time.time()
 
     ## setup gsm modem
     def setup(self, db, osc, loc):
@@ -156,6 +158,8 @@ class OscReceiver(MessageReceiverInterface):
             ## send to all subscribers
             addr = "/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2]
             self.sendToAllSubscribers(oscTxt, addr)
+            ## update timer
+            self.lastMessageTime = time.time()
 
     ## setup osc server
     def setup(self, db, osc, loc):
@@ -233,6 +237,8 @@ class TwitterReceiver(MessageReceiverInterface):
                     self.database.create(time=datetime.fromtimestamp(time.time()),
                                          text=tweet['text'].encode('utf-8'),
                                          receiver="twitter")
+                    ## update timer
+                    self.lastMessageTime = time.time()
             self.lastTwitterCheck = time.time()
 
     ## end twitterReceiver

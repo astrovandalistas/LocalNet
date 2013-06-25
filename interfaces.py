@@ -109,6 +109,7 @@ class MessageReceiverInterface:
     def __init__(self):
         self.subscriberList = []
         self.name = ""
+        self.lastMessageTime = time.time()
     def setup(self, db, osc, loc):
         print "setup not implemented"
     # Checks for new messages
