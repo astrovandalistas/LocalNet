@@ -108,7 +108,9 @@ class MessageReceiverInterface:
     # Sets up the stuff a receiver might need
     def __init__(self):
         self.subscriberList = []
-    def setup(self, osc, loc):
+        self.name = ""
+        self.lastMessageTime = time.time()
+    def setup(self, db, osc, loc):
         print "setup not implemented"
     # Checks for new messages
     def update(self):
@@ -127,13 +129,27 @@ class MessageReceiverInterface:
     # Checks if it has specific subscriber
     def hasSubscriber(self, (ip,port)):
         return ((ip,port) in self.subscriberList)
-    # Sends msg to all subscribers
-    def _sendToAllSubscribers(self, msg):
+    # Prepare OSC message and send it to all subscribers
+    def sendToAllSubscribers(self, txt, addr=None):
+        if (addr is None):
+            addr = "/AEffectLab/"+self.location+"/"+self.name
+        ## setup osc message
+        msg = OSCMessage()
+        msg.setAddress(addr)
+        ## Send utf-8 byte blob
+        msg.append(txt.encode('utf-8'), 'b')
+        ## send to subscribers
+        self._sendToAllSubscribers(msg)
+        ## update timer
+        self.lastMessageTime = time.time()
+
+    # Sends OSC msg to all subscribers
+    def _sendToAllSubscribers(self, oscMsg):
         delQ = Queue()
         for (ip,port) in self.subscriberList:
             try:
                 self.oscClient.connect((ip, port))
-                self.oscClient.sendto(msg, (ip, port))
+                self.oscClient.sendto(oscMsg, (ip, port))
             except OSCClientError:
                 print ("no connection to "+ip+":"+str(port)
                        +", removing it from osc subscribers")
