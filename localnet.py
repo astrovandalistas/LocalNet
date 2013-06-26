@@ -16,6 +16,7 @@ class Message(Model):
     time = DateTimeField()
     text = BlobField()
     receiver = CharField()
+    published = BooleanField()
 
 def setup():
     global prototypes, mOscClient, oscPingMessage

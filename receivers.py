@@ -38,7 +38,8 @@ class SmsReceiver(MessageReceiverInterface):
         ## log onto local database
         self.database.create(time=datetime.fromtimestamp(time.time()),
                              text=smsTxt.encode('utf-8'),
-                             receiver="sms")
+                             receiver="sms",
+                             published=False)
 
     ## setup gsm modem
     def setup(self, db, osc, loc):
@@ -231,7 +232,8 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## log onto local database
                     self.database.create(time=datetime.fromtimestamp(time.time()),
                                          text=tweet['text'].encode('utf-8'),
-                                         receiver="twitter")
+                                         receiver="twitter",
+                                         published=False)
             self.lastTwitterCheck = time.time()
 
     ## end twitterReceiver
