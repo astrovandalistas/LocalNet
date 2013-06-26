@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import time, threading, string
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from Queue import Queue
@@ -24,6 +26,25 @@ class PrototypeInterface:
         this also implements subscribeToAll() and subscribeTo(name) """
     def removeNonAscii(self, s):
         return "".join(i for i in s if i in string.printable)
+    def removeAccents(self,txt):
+        ## hack! sanitize text
+        txt = txt.replace("#","")
+        ##
+        txt = txt.replace("á","aa")
+        txt = txt.replace("é","ee")
+        txt = txt.replace("í","ii")
+        txt = txt.replace("ó","oo")
+        txt = txt.replace("ú","uu")
+        txt = txt.replace("ñ","ni")
+        ##
+        txt = txt.replace("Á","aa")
+        txt = txt.replace("É","ee")
+        txt = txt.replace("Í","ii")
+        txt = txt.replace("Ó","oo")
+        txt = txt.replace("Ú","uu")
+        txt = txt.replace("Ñ","ni")
+        return txt
+
     def _oscHandler(self, addr, tags, stuff, source):
         addrTokens = addr.lstrip('/').split('/')
         ## list of all receivers
