@@ -11,6 +11,12 @@ from peewee import *
 LOCAL_NET_LOCALE = "Five42"
 OSC_SERVER_PORT = 8888
 
+## init database
+class Message(Model):
+    time = DateTimeField()
+    text = BlobField()
+    receiver = CharField()
+
 def setup():
     global receivers, prototypes, mOscClient
     global lastPrototypeCheck, oscPingMessage
@@ -21,12 +27,6 @@ def setup():
     oscPingMessage.setAddress("/LocalNet/Ping")
     ## use empty byte blob
     oscPingMessage.append("", 'b')
-
-    ## init database
-    class Message(Model):
-        time = DateTimeField()
-        text = BlobField()
-        receiver = CharField()
 
     try:
         Message.create_table()
@@ -54,10 +54,6 @@ def setup():
         badReceiver = setupDelQ.get()
         del receivers[badReceiver]
 
-def loop():
-    for (k,v) in receivers.iteritems():
-        v.update()
-
 def checkPrototypes():
     print "checking prots"
     delQ = Queue()
@@ -74,16 +70,30 @@ def checkPrototypes():
         (ip,port) = delQ.get()
         if((ip,port) in prototypes):
             del prototypes[(ip,port)]
+def loop():
+    global lastPrototypeCheck, receivers
+
+    ## check prototype connection every 30 seconds
+    if(time.time()-lastPrototypeCheck > 30):
+        checkPrototypes()
+        lastPrototypeCheck = time.time()
+
+    ## run update on the receivers and get most recent message time
+    recentLastMessage = 0
+    for (k,v) in receivers.iteritems():
+        v.update()
+        if(v.lastMessageTime > recentLastMessage):
+            recentLastMessage = v.lastMessageTime
+
+    ## if haven't seen a message in a while (5 minutes), dig from database
+    if(time.time() - recentLastMessage > 300):
+        for m in Message.select().order_by(fn.Random()).limit(1):
+            receivers[m.receiver].sendToAllSubscribers(str(m.text).decode('utf-8'))
 
 if __name__=="__main__":
     setup()
     try:
         while(True):
-            ## check prototype connection every 30 seconds
-            if(time.time()-lastPrototypeCheck > 30):
-                checkPrototypes()
-                lastPrototypeCheck = time.time()
-
             ## keep it from looping faster than ~60 times per second
             loopStart = time.time()
             loop()
