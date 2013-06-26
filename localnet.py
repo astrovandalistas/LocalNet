@@ -18,8 +18,8 @@ class Message(Model):
     receiver = CharField()
 
 def setup():
-    global receivers, prototypes, mOscClient
-    global lastPrototypeCheck, oscPingMessage
+    global prototypes, mOscClient, oscPingMessage
+    global lastPrototypeCheck, receivers
     receivers = {}
     prototypes = {}
     lastPrototypeCheck = time.time()
@@ -56,6 +56,7 @@ def setup():
 
 def checkPrototypes():
     print "checking prots"
+    global prototypes, mOscClient, oscPingMessage
     delQ = Queue()
     for (ip,port) in prototypes:
         try:
