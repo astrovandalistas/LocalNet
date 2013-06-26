@@ -140,6 +140,8 @@ class MessageReceiverInterface:
         msg.append(txt.encode('utf-8'), 'b')
         ## send to subscribers
         self._sendToAllSubscribers(msg)
+        ## update timer
+        self.lastMessageTime = time.time()
 
     # Sends OSC msg to all subscribers
     def _sendToAllSubscribers(self, oscMsg):
