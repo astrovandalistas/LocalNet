@@ -2,10 +2,12 @@
 
 from interfaces import MessageReceiverInterface
 import time, threading
+from datetime import datetime
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
 from humod import Modem, actions, errors
+from peewee import *
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
@@ -31,19 +33,20 @@ class SmsReceiver(MessageReceiverInterface):
         self.modem.sms_del(int(ml[-1]))
         smsTxt = self._decodeSms(smsTxt)
         print "received: "+smsTxt
-        ## setup osc message
-        msg = OSCMessage()
-        msg.setAddress("/AEffectLab/"+self.location+"/sms")
-        ## Send utf-8 byte blob
-        msg.append(smsTxt.encode('utf-8'), 'b')
-        ## send to subscribers
-        self._sendToAllSubscribers(msg)
-        ## TODO: log on local database
+        ## send to all subscribers
+        self.sendToAllSubscribers(smsTxt)
+        ## log onto local database
+        self.database.create(time=datetime.fromtimestamp(time.time()),
+                             text=smsTxt.encode('utf-8'),
+                             receiver="sms",
+                             published=False)
 
     ## setup gsm modem
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
+        self.name = "sms"
         self.modemReady = True
         ## setup modem for sms receiver
         mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
@@ -73,16 +76,19 @@ class SmsReceiver(MessageReceiverInterface):
 
 class OscReceiver(MessageReceiverInterface):
     """A class for receiving Osc messages and passing them to its subscribers"""
-    OSC_SERVER_IP = "127.0.0.1"
-    OSC_SERVER_PORT = 8888
-
-    def __init__(self, others, protos):
+    def __init__(self, others, protos, ip="127.0.0.1", port=8888):
         MessageReceiverInterface.__init__(self)
+        self.oscServerIp = ip
+        self.oscServerPort = port
         ## this is a dict of names to receivers
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
-        self.otherReceivers = others
-        self.otherReceivers['osc'] = self
+        self.allReceivers = others
+        ## to enable osc forwarding, add osc server as subscriber to all receivers
+        for k in self.allReceivers:
+            self.allReceivers[k].addSubscriber((self.oscServerIp,self.oscServerPort))
+        ## add osc receiver to 
+        self.allReceivers['osc'] = self
         ## this is a dict of (ip,port) -> prototype
         ## like: (192.168.2.5, 8888) -> megavoice
         self.allPrototypes = protos
@@ -95,20 +101,20 @@ class OscReceiver(MessageReceiverInterface):
             ip = getUrlStr(source).split(":")[0]
             port = int(stuff[0])
             self.allPrototypes[(ip,port)] = addrTokens[2]
-            if (addrTokens[3].lower() in self.otherReceivers):
+            if (addrTokens[3].lower() in self.allReceivers):
                 print "adding "+ip+":"+str(port)+" to "+addrTokens[3].lower()+" receivers"
-                self.otherReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
+                self.allReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
         elif ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "remove")):
             ip = getUrlStr(source).split(":")[0]
             port = int(stuff[0])
-            if (addrTokens[2].lower() in self.otherReceivers):
+            if (addrTokens[2].lower() in self.allReceivers):
                 print "removing "+ip+":"+str(port)+" from "+addrTokens[2].lower()+" receivers"
-                self.otherReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
+                self.allReceivers[addrTokens[2].lower()].removeSubscriber((ip,port))
             ## only remove from list of prototypes when not in any receiver...
             inSomeSubscriber = False
-            for k in self.otherReceivers:
-                inSomeSubscriber |= self.otherReceivers[k].hasSubscriber((ip,port))
+            for k in self.allReceivers:
+                inSomeSubscriber |= self.allReceivers[k].hasSubscriber((ip,port))
             if ((not inSomeSubscriber) and ((ip,port) in self.allPrototypes)):
                 print("removing "+self.allPrototypes[(ip,port)]+" @ "+ip+":"+str(port)
                       +" from list of prototypes")
@@ -121,7 +127,7 @@ class OscReceiver(MessageReceiverInterface):
             ## send list of receivers to client
             msg = OSCMessage()
             msg.setAddress("/LocalNet/Receivers")
-            msg.append(",".join(self.otherReceivers.keys()))
+            msg.append(",".join(self.allReceivers.keys()))
             try:
                 self.oscClient.connect((ip, port))
                 self.oscClient.sendto(msg, (ip, port))
@@ -148,20 +154,17 @@ class OscReceiver(MessageReceiverInterface):
         elif (addrTokens[0].lower() == "aeffectlab"):
             oscTxt = stuff[0].decode('utf-8')
             print "forwarding "+addr+" : "+oscTxt+" to my osc subscribers"
-            ## setup osc message
-            msg = OSCMessage()
-            msg.setAddress("/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2])
-            ## Send utf-8 byte blob
-            msg.append(oscTxt.encode('utf-8'), 'b')
-            ## send to subscribers
-            self._sendToAllSubscribers(msg)
+            ## send to all subscribers
+            addr = "/AEffectLab/"+addrTokens[1]+"/"+addrTokens[2]
+            self.sendToAllSubscribers(oscTxt, addr)
 
     ## setup osc server
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
-        self.oscServer = OSCServer((OscReceiver.OSC_SERVER_IP,
-                                    OscReceiver.OSC_SERVER_PORT))
+        self.name = "osc"
+        self.oscServer = OSCServer((self.oscServerIp,self.oscServerPort))
         ## handler
         self.oscServer.addMsgHandler('default', self._oscHandler)
         ## start server
@@ -188,9 +191,11 @@ class TwitterReceiver(MessageReceiverInterface):
     SEARCH_TERM = ("#aeLab")
 
     ## setup twitter connection and internal variables
-    def setup(self, osc, loc):
+    def setup(self, db, osc, loc):
+        self.database = db
         self.oscClient = osc
         self.location = loc
+        self.name = "twitter"
         self.lastTwitterCheck = time.time()
         self.mTwitter = None
         self.twitterAuthenticated = False
@@ -216,21 +221,19 @@ class TwitterReceiver(MessageReceiverInterface):
             self._searchTwitter()
             if (not self.twitterResults is None):
                 for tweet in self.twitterResults["statuses"]:
-                    ## print
-                    print ("pushing %s from @%s" %
-                           (tweet['text'],
-                            tweet['user']['screen_name']))
-                    ## setup osc message
-                    msg = OSCMessage()
-                    msg.setAddress("/AEffectLab/"+self.location+"/twitter")
-                    ## Send utf-8 byte blob
-                    msg.append(tweet['text'].encode('utf-8'),'b')
-                    ## send to subscribers
-                    self._sendToAllSubscribers(msg)
                     ## update largestTweetId for next searches
                     if (int(tweet['id']) > self.largestTweetId):
                         self.largestTweetId = int(tweet['id'])
-                    ## TODO: log on local database
+                    ## print
+                    print ("pushing %s from @%s" %
+                           (tweet['text'], tweet['user']['screen_name']))
+                    ## send to all subscribers
+                    self.sendToAllSubscribers(tweet['text'])
+                    ## log onto local database
+                    self.database.create(time=datetime.fromtimestamp(time.time()),
+                                         text=tweet['text'].encode('utf-8'),
+                                         receiver="twitter",
+                                         published=False)
             self.lastTwitterCheck = time.time()
 
     ## end twitterReceiver
