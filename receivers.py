@@ -243,8 +243,8 @@ class TwitterReceiver(MessageReceiverInterface):
     ## authenticate to twitter using secrets
     def _authenticateTwitter(self):
         try:
-            self.mTwitter = Twython(twitter_token = self.secrets['CONSUMER_KEY'],
-                                    twitter_secret = self.secrets['CONSUMER_SECRET'],
+            self.mTwitter = Twython(app_key = self.secrets['CONSUMER_KEY'],
+                                    app_secret = self.secrets['CONSUMER_SECRET'],
                                     oauth_token = self.secrets['ACCESS_TOKEN'],
                                     oauth_token_secret = self.secrets['ACCESS_SECRET'])
             self.twitterAuthenticated = True
