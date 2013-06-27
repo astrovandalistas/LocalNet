@@ -16,7 +16,8 @@ def runPrototype(prot):
             if (loopTime < 0.017):
                 time.sleep(0.017 - loopTime)
     except KeyboardInterrupt:
-        prot._stop()
+        prot._cleanUpOsc()
+        prot.stop()
 
 class PrototypeInterface:
     """ prototype interface:
@@ -88,7 +89,7 @@ class PrototypeInterface:
             print ("no connection to "+self.localNetAddress
                     +", can't request list of receivers")
 
-    def _stop(self):
+    def _cleanUpOsc(self):
         ## disconnect from LocalNet
         for rcvr in self.subscribedReceivers.keys():
             msg = OSCMessage()
@@ -123,6 +124,8 @@ class PrototypeInterface:
         print "setup not implemented"
     def loop(self):
         print "loop not implemented"
+    def stop(self):
+        print "stop not implemented"
 
 class MessageReceiverInterface:
     """A message receiver interface"""
