@@ -106,7 +106,8 @@ class PrototypeInterface:
 
     def subscribeToAll(self):
         for rcvr in self.allReceivers.keys():
-            self.subscribeTo(rcvr)
+            if(not rcvr.lower().startswith('osc')):
+                self.subscribeTo(rcvr)
 
     def subscribeTo(self,rcvr):
         msg = OSCMessage()
