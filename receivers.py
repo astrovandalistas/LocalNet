@@ -80,6 +80,8 @@ class OscReceiver(MessageReceiverInterface):
         MessageReceiverInterface.__init__(self)
         self.oscServerIp = ip
         self.oscServerPort = port
+        self.oscMasterIp = None
+        self.oscMasterPort = None
         ## this is a dict of names to receivers
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
@@ -104,6 +106,19 @@ class OscReceiver(MessageReceiverInterface):
             if (addrTokens[3].lower() in self.allReceivers):
                 print "adding "+ip+":"+str(port)+" to "+addrTokens[3].lower()+" receivers"
                 self.allReceivers[addrTokens[3].lower()].addSubscriber((ip,port))
+                ## if adding osc listener need to setup osc master
+                if((addrTokens[3].lower().startswith('osc')) 
+                    and (not self.oscMasterIp is None)
+                    and (not self.oscMasterPort is None)):
+                    print ("adding osc master")
+                    try:
+                        oscSubscribeMessage = OSCMessage()
+                        oscSubscribeMessage.setAddress("/LocalNet/Add/"+addrTokens[2]+"/Osc")
+                        oscSubscribeMessage.append(str(self.oscServerPort).encode('utf-8'), 'b')
+                        self.oscClient.connect((self.oscMasterIp, int(self.oscMasterPort)))
+                        self.oscClient.sendto(oscSubscribeMessage, (self.oscMasterIp, int(self.oscMasterPort)))
+                    except OSCClientError:
+                        print ("no connection to "+self.oscMasterIp+":"+str(self.oscMasterPort))
         elif ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "remove")):
             ip = getUrlStr(source).split(":")[0]
@@ -172,6 +187,11 @@ class OscReceiver(MessageReceiverInterface):
         self.oscThread.start()
         ## return
         return True
+
+    ## setup master ip,port
+    def setupMaster(self,ip,port):
+        self.oscMasterIp = ip
+        self.oscMasterPort = int(port)
 
     ## update osc server
     def update(self):
