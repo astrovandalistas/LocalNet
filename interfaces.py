@@ -175,6 +175,7 @@ class MessageReceiverInterface:
             try:
                 self.oscClient.connect((ip, port))
                 self.oscClient.sendto(oscMsg, (ip, port))
+                self.oscClient.connect((ip, port))
             except OSCClientError:
                 print ("no connection to "+ip+":"+str(port)
                        +", removing it from osc subscribers")

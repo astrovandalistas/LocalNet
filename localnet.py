@@ -69,6 +69,7 @@ def checkPrototypes():
         try:
             mOscClient.connect((ip, int(port)))
             mOscClient.sendto(oscPingMessage, (ip, int(port)))
+            mOscClient.connect((ip, int(port)))
         except OSCClientError:
             print ("no connection to "+ip+":"+str(port)
                     +", removing it from list of prototypes")
