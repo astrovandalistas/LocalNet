@@ -60,6 +60,7 @@ def setup():
     if (("MASTER_SERVER_IP" in globals()) and ("MASTER_SERVER_PORT" in globals())
         and ('osc' in receivers)):
         receivers['osc'].setupMaster(MASTER_SERVER_IP, MASTER_SERVER_PORT)
+
 def checkPrototypes():
     print "checking prots"
     global prototypes, mOscClient, oscPingMessage
