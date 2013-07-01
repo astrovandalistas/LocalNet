@@ -10,6 +10,8 @@ from peewee import *
 # TODO: set twitter hashtags here
 LOCAL_NET_LOCALE = "Five42"
 OSC_SERVER_PORT = 8888
+MASTER_SERVER_IP = "127.0.0.1"
+MASTER_SERVER_PORT = 7777
 
 ## init database
 class Message(Model):
@@ -54,7 +56,10 @@ def setup():
     while (not setupDelQ.empty()):
         badReceiver = setupDelQ.get()
         del receivers[badReceiver]
-
+    ## if using as server-osc-repeater
+    if (("MASTER_SERVER_IP" in globals()) and ("MASTER_SERVER_PORT" in globals())
+        and ('osc' in receivers)):
+        receivers['osc'].setupMaster(MASTER_SERVER_IP, MASTER_SERVER_PORT)
 def checkPrototypes():
     print "checking prots"
     global prototypes, mOscClient, oscPingMessage
