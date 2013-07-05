@@ -157,7 +157,7 @@ class MessageReceiverInterface:
     # Prepare OSC message and send it to all subscribers
     def sendToAllSubscribers(self, txt, addr=None):
         if (addr is None):
-            addr = "/AEffectLab/"+self.location+"/"+self.name
+            addr = "/AEffectLab/"+self.location['name']+"/"+self.name
         ## setup osc message
         msg = OSCMessage()
         msg.setAddress(addr)

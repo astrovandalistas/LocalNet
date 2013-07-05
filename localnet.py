@@ -6,9 +6,16 @@ from OSC import OSCClient, OSCMessage, OSCClientError
 from receivers import TwitterReceiver, SmsReceiver, OscReceiver
 from peewee import *
 
-# these will probably be command line arguments
+# these will probably be command line arguments or come from files
 # TODO: set twitter hashtags here
-LOCAL_NET_LOCALE = "Five42"
+LOCAL_NET_LOCALE = {
+                    "name":"Five42",
+                    "city":"Oakland",
+                    "state":"CA",
+                    "country":"USA",
+                    "coordinates":[37.8044,-122.2697]
+                    }
+LOCAL_NET_DESCRIPTION = "This is a house on 542 Lewis. Best fireworks display this side of the bay."
 OSC_SERVER_PORT = 8888
 MASTER_SERVER_IP = "127.0.0.1"
 MASTER_SERVER_PORT = 7777
