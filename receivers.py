@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from interfaces import MessageReceiverInterface
-import time, threading
+from threading import Thread
+from time import time, strftime, localtime
 from datetime import datetime
 from Queue import Queue
 from twython import Twython
@@ -44,7 +45,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "http"
         self.socketConnected = False
-        self.lastWebCheck = time.time()
+        self.lastWebCheck = time()
         localNetInfo = {
                         'localnet-name':self.location['name'],
                         'location':self._getLocationDict(),
@@ -87,7 +88,7 @@ class HttpReceiver(MessageReceiverInterface):
 
         ## TODO: check and send new messages
         ## ask for new messages
-        now = time.time()
+        now = time()
         if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
             rInfo = {
                     'localnet-name':self.location['name'],
@@ -130,9 +131,12 @@ class SmsReceiver(MessageReceiverInterface):
         ## send to all subscribers
         self.sendToAllSubscribers(smsTxt)
         ## log onto local database
-        self.database.create(time=datetime.fromtimestamp(time.time()),
+        self.database.create(epoch=time(),
+                             dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime()),
                              text=smsTxt.encode('utf-8'),
                              receiver="sms",
+                             hashTag="",
+                             prototypes="",
                              published=False)
 
     ## setup gsm modem
@@ -278,7 +282,7 @@ class OscReceiver(MessageReceiverInterface):
         ## handler
         self.oscServer.addMsgHandler('default', self._oscHandler)
         ## start server
-        self.oscThread = threading.Thread( target = self.oscServer.serve_forever )
+        self.oscThread = Thread( target = self.oscServer.serve_forever )
         self.oscThread.start()
         ## return
         return True
@@ -311,7 +315,7 @@ class TwitterReceiver(MessageReceiverInterface):
         self.oscClient = osc
         self.location = loc
         self.name = "twitter"
-        self.lastTwitterCheck = time.time()
+        self.lastTwitterCheck = time()
         self.mTwitter = None
         self.twitterAuthenticated = False
         self.largestTweetId = 1
@@ -332,7 +336,7 @@ class TwitterReceiver(MessageReceiverInterface):
 
     ## check for new tweets every once in a while
     def update(self):
-        if (time.time() - self.lastTwitterCheck > TwitterReceiver.TWITTER_CHECK_PERIOD):
+        if (time() - self.lastTwitterCheck > TwitterReceiver.TWITTER_CHECK_PERIOD):
             self._searchTwitter()
             if (not self.twitterResults is None):
                 for tweet in self.twitterResults["statuses"]:
@@ -345,11 +349,14 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## send to all subscribers
                     self.sendToAllSubscribers(tweet['text'])
                     ## log onto local database
-                    self.database.create(time=datetime.fromtimestamp(time.time()),
+                    self.database.create(epoch=time(),
+                                         dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime()),
                                          text=tweet['text'].encode('utf-8'),
                                          receiver="twitter",
+                                         hashTag=TwitterReceiver.SEARCH_TERM,
+                                         prototypes="",
                                          published=False)
-            self.lastTwitterCheck = time.time()
+            self.lastTwitterCheck = time()
 
     ## end twitterReceiver
     def stop(self):

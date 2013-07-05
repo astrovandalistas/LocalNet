@@ -24,9 +24,12 @@ WEB_SERVER_PORT = 3700
 
 ## init database
 class Message(Model):
-    time = DateTimeField()
+    epoch = FloatField()
+    dateTime = CharField()
     text = BlobField()
     receiver = CharField()
+    hashTag = CharField()
+    prototypes = CharField()
     published = BooleanField()
 
 def setup():
