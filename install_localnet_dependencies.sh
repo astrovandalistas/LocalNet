@@ -4,6 +4,8 @@ sudo apt-get update
 sudo apt-get upgrade
 sudo apt-get install emacs python-dev python-setuptools
 
+cd ../
+
 # pyOsc
 wget https://trac.v2.nl/raw-attachment/wiki/pyOSC/pyOSC-0.3.5b-5294.tar.gz
 tar -xzvf pyOSC-0.3.5b-5294.tar.gz
