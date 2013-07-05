@@ -58,7 +58,7 @@ def setup():
     receivers['sms'] = rcvS
     rcvO = OscReceiver(receivers,prototypes, port=OSC_SERVER_PORT)
     receivers['osc'] = rcvO
-    rcvH = HttpReceiver(receivers,prototypes, WEB_SERVER_IP, WEB_SERVER_PORT)
+    rcvH = HttpReceiver(receivers,prototypes, WEB_SERVER_IP, WEB_SERVER_PORT, LOCAL_NET_DESCRIPTION)
     receivers['http'] = rcvH
     mOscClient = OSCClient()
     setupDelQ = Queue()

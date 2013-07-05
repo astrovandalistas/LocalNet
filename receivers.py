@@ -11,8 +11,9 @@ from peewee import *
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
-    def __init__(self, others, protos, ip="127.0.0.1", port=3700):
+    def __init__(self, others, protos, ip="127.0.0.1", port=3700, description=""):
         MessageReceiverInterface.__init__(self)
+        self.localNetDescription = description
         self.ServerIp = ip
         self.ServerPort = port
         ## this is a dict of names to receivers
@@ -33,6 +34,17 @@ class HttpReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "http"
         self.socketConnected = False
+        localNetInfo = {
+                        'localnet-name':loc['name'],
+                        'location':{
+                                    'city':loc['city'],
+                                    'state':loc['state'],
+                                    'country':loc['country'],
+                                    'coordinates':loc['coordinates']
+                                    },
+                        'localnet-description':self.localNetDescription,
+                        'receivers':self.allReceivers.keys()
+                        }
         ## TODO: open socket
         ## TODO: send localnet info
         return True
