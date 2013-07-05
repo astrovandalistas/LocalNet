@@ -12,6 +12,7 @@ from peewee import *
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
+    WEB_CHECK_PERIOD = 10
     def __init__(self, others, protos, ip="127.0.0.1", port=3700, description=""):
         MessageReceiverInterface.__init__(self)
         self.localNetDescription = description
@@ -43,6 +44,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "http"
         self.socketConnected = False
+        self.lastWebCheck = time.time()
         localNetInfo = {
                         'localnet-name':self.location['name'],
                         'location':self._getLocationDict(),
@@ -84,6 +86,17 @@ class HttpReceiver(MessageReceiverInterface):
                 del self.sentPrototypes[p]
 
         ## TODO: check and send new messages
+        ## ask for new messages
+        now = time.time()
+        if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
+            rInfo = {
+                    'localnet-name':self.location['name'],
+                    'location':self._getLocationDict(),
+                    'since':self.lastWebCheck
+                    }
+            ## TODO: send the request
+            ## if successful request
+            self.lastWebCheck = now
 
     ## end sms receiver
     def stop(self):
