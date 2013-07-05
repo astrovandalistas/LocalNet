@@ -3,6 +3,7 @@
 from interfaces import MessageReceiverInterface
 import time, threading
 from datetime import datetime
+from Queue import Queue
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
@@ -27,6 +28,14 @@ class HttpReceiver(MessageReceiverInterface):
         ## for keeping track of prototypes that have been sent to server
         self.sentPrototypes = {}
 
+    def _getLocationDict(self):
+        return {
+                'city':self.location['city'],
+                'state':self.location['state'],
+                'country':self.location['country'],
+                'coordinates':self.location['coordinates']
+                }
+
     ## setup socket communication to server
     def setup(self, db, osc, loc):
         self.database = db
@@ -35,13 +44,8 @@ class HttpReceiver(MessageReceiverInterface):
         self.name = "http"
         self.socketConnected = False
         localNetInfo = {
-                        'localnet-name':loc['name'],
-                        'location':{
-                                    'city':loc['city'],
-                                    'state':loc['state'],
-                                    'country':loc['country'],
-                                    'coordinates':loc['coordinates']
-                                    },
+                        'localnet-name':self.location['name'],
+                        'location':self._getLocationDict(),
                         'localnet-description':self.localNetDescription,
                         'receivers':self.allReceivers.keys()
                         }
@@ -50,10 +54,36 @@ class HttpReceiver(MessageReceiverInterface):
         return True
 
     def update(self):
-        ## TODO: check and send new prototypes
-        ## TODO: check for disconnected prototypes
+        ## check for new prototypes
+        for p in self.allPrototypes:
+            if (not p in self.sentPrototypes):
+                (pip,pport) = p
+                pInfo = {
+                        'localnet-name':self.location['name'],
+                        'location':self._getLocationDict(),
+                        'prototype-name':self.allPrototypes[p]+"@"+pip+":"+str(pport),
+                        'prototype-description':"hello, I'm a prototype"
+                        }
+                ## TODO: send this prototype info
+                self.sentPrototypes[p] = self.allPrototypes[p]
+
+        ## check for disconnected prototypes
+        delQ = Queue()
+        for p in self.sentPrototypes:
+            if (not p in self.allPrototypes):
+                delQ.put(p)
+        while (not delQ.empty()):
+                p = delQ.get()
+                (pip,pport) = p
+                pInfo = {
+                        'localnet-name':self.location['name'],
+                        'location':self._getLocationDict(),
+                        'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
+                        }
+                ## TODO: send this prototype info
+                del self.sentPrototypes[p]
+
         ## TODO: check and send new messages
-        pass
 
     ## end sms receiver
     def stop(self):
