@@ -3,7 +3,7 @@
 import time
 from Queue import Queue
 from OSC import OSCClient, OSCMessage, OSCClientError
-from receivers import TwitterReceiver, SmsReceiver, OscReceiver
+from receivers import TwitterReceiver, SmsReceiver, OscReceiver, HttpReceiver
 from peewee import *
 
 # these will probably be command line arguments or come from files
@@ -19,6 +19,8 @@ LOCAL_NET_DESCRIPTION = "This is a house on 542 Lewis. Best fireworks display th
 OSC_SERVER_PORT = 8888
 MASTER_SERVER_IP = "127.0.0.1"
 MASTER_SERVER_PORT = 7777
+WEB_SERVER_IP = "127.0.0.1"
+WEB_SERVER_PORT = 3700
 
 ## init database
 class Message(Model):
@@ -55,6 +57,9 @@ def setup():
     rcvS = SmsReceiver()
     receivers['sms'] = rcvS
     rcvO = OscReceiver(receivers,prototypes, port=OSC_SERVER_PORT)
+    receivers['osc'] = rcvO
+    rcvH = HttpReceiver(receivers,prototypes, WEB_SERVER_IP, WEB_SERVER_PORT)
+    receivers['http'] = rcvH
     mOscClient = OSCClient()
     setupDelQ = Queue()
     for (k,v) in receivers.iteritems():

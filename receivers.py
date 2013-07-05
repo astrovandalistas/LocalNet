@@ -19,8 +19,6 @@ class HttpReceiver(MessageReceiverInterface):
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
         self.allReceivers = others
-        ## add osc receiver to
-        self.allReceivers['http'] = self
         ## this is a dict of (ip,port) -> prototype
         ## like: (192.168.2.5, 8888) -> megavoice
         self.allPrototypes = protos
@@ -37,6 +35,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.socketConnected = False
         ## TODO: open socket
         ## TODO: send localnet info
+        return True
 
     def update(self):
         ## TODO: check and send new prototypes
@@ -46,8 +45,9 @@ class HttpReceiver(MessageReceiverInterface):
 
     ## end sms receiver
     def stop(self):
-        if(self.modemReady):
-            self.modem.prober.stop()
+        if(self.socketConnected):
+            ## TODO: probably disconnect nicely
+            pass
 
 
 
@@ -128,8 +128,6 @@ class OscReceiver(MessageReceiverInterface):
         ## to enable osc forwarding, add osc server as subscriber to all receivers
         for k in self.allReceivers:
             self.allReceivers[k].addSubscriber((self.oscServerIp,self.oscServerPort))
-        ## add osc receiver to 
-        self.allReceivers['osc'] = self
         ## this is a dict of (ip,port) -> prototype
         ## like: (192.168.2.5, 8888) -> megavoice
         self.allPrototypes = protos
