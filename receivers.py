@@ -3,7 +3,7 @@
 from interfaces import MessageReceiverInterface
 from threading import Thread
 from time import time, strftime, localtime
-from datetime import datetime
+from json import loads, dumps
 from Queue import Queue
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
@@ -136,7 +136,7 @@ class SmsReceiver(MessageReceiverInterface):
                              text=smsTxt.encode('utf-8'),
                              receiver="sms",
                              hashTag="",
-                             prototypes="",
+                             prototypes=dumps(self.subscriberList),
                              published=False)
 
     ## setup gsm modem
@@ -354,7 +354,7 @@ class TwitterReceiver(MessageReceiverInterface):
                                          text=tweet['text'].encode('utf-8'),
                                          receiver="twitter",
                                          hashTag=TwitterReceiver.SEARCH_TERM,
-                                         prototypes="",
+                                         prototypes=dumps(self.subscriberList),
                                          published=False)
             self.lastTwitterCheck = time()
 
