@@ -11,6 +11,45 @@ from peewee import *
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
+    def __init__(self, others, protos, ip="127.0.0.1", port=3700):
+        MessageReceiverInterface.__init__(self)
+        self.ServerIp = ip
+        self.ServerPort = port
+        ## this is a dict of names to receivers
+        ## like: 'sms' -> SmsReceiver_instance
+        ## keys are used to match against osc requests
+        self.allReceivers = others
+        ## add osc receiver to
+        self.allReceivers['http'] = self
+        ## this is a dict of (ip,port) -> prototype
+        ## like: (192.168.2.5, 8888) -> megavoice
+        self.allPrototypes = protos
+        ## this is a dict of (ip,port) -> prototype 
+        ## for keeping track of prototypes that have been sent to server
+        self.sentPrototypes = {}
+
+    ## setup socket communication to server
+    def setup(self, db, osc, loc):
+        self.database = db
+        self.oscClient = osc
+        self.location = loc
+        self.name = "http"
+        self.socketConnected = False
+        ## TODO: open socket
+        ## TODO: send localnet info
+
+    def update(self):
+        ## TODO: check and send new prototypes
+        ## TODO: check for disconnected prototypes
+        ## TODO: check and send new messages
+        pass
+
+    ## end sms receiver
+    def stop(self):
+        if(self.modemReady):
+            self.modem.prober.stop()
+
+
 
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
