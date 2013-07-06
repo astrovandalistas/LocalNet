@@ -5,6 +5,8 @@ from threading import Thread
 from time import time, strftime, localtime
 from json import loads, dumps
 from Queue import Queue
+from requests import ConnectionError
+from socketIO_client import SocketIO, SocketIOError
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
@@ -17,8 +19,8 @@ class HttpReceiver(MessageReceiverInterface):
     def __init__(self, others, protos, ip="127.0.0.1", port=3700, description=""):
         MessageReceiverInterface.__init__(self)
         self.localNetDescription = description
-        self.ServerIp = ip
-        self.ServerPort = port
+        self.serverIp = ip
+        self.serverPort = port
         ## this is a dict of names to receivers
         ## like: 'sms' -> SmsReceiver_instance
         ## keys are used to match against osc requests
@@ -45,6 +47,8 @@ class HttpReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "http"
         self.socketConnected = False
+        self.lastRequestResult = False
+        self.addedToServer = False
         self.lastWebCheck = time()
         localNetInfo = {
                         'localnet-name':self.location['name'],
@@ -52,23 +56,60 @@ class HttpReceiver(MessageReceiverInterface):
                         'localnet-description':self.localNetDescription,
                         'receivers':self.allReceivers.keys()
                         }
-        ## TODO: open socket
-        ## TODO: send localnet info
-        return True
+        ## try to open socket and send localnet info
+        try:
+            self.socket = SocketIO(self.serverIp, self.serverPort)
+        except (SocketIOError, ConnectionError) as e:
+            self.socketConnected = False
+            print ("couldn't connect to web server at "+
+                    self.serverIp+":"+str(self.serverPort))
+        else:
+            self.socketConnected = True
+            self.socket.on('message-request-reply',self._onMessageRequestReply)
+            self.socket.on('server-reply',self._onServerReply)
+            self.socket.emit('add-localnet', localNetInfo)
+            self.socket.wait_for_callbacks(seconds=1.0)
+            self.addedToServer = self.lastRequestResult
+            self.lastRequestResult = False
+
+        return self.socketConnected
 
     def update(self):
-        ## check for new prototypes
-        for p in self.allPrototypes:
-            if (not p in self.sentPrototypes):
-                (pip,pport) = p
-                pInfo = {
+        ## if local net not on web server, add to server
+        if(not self.addedToServer):
+            localNetInfo = {
                         'localnet-name':self.location['name'],
                         'location':self._getLocationDict(),
-                        'prototype-name':self.allPrototypes[p]+"@"+pip+":"+str(pport),
-                        'prototype-description':"hello, I'm a prototype"
+                        'localnet-description':self.localNetDescription,
+                        'receivers':self.allReceivers.keys()
                         }
-                ## TODO: send this prototype info
-                self.sentPrototypes[p] = self.allPrototypes[p]
+            if(self.socket.connected):
+                self.socket.emit('add-localnet', localNetInfo)
+                self.socket.wait_for_callbacks(seconds=0.5)
+                self.addedToServer = self.lastRequestResult
+                self.lastRequestResult = False
+
+        ## check for new prototypes
+        addQ = Queue()
+        for p in self.allPrototypes:
+            if (not p in self.sentPrototypes):
+                addQ.put(p)
+        while (not addQ.empty()):
+            p = addQ.get()
+            (pip,pport) = p
+            pInfo = {
+                    'localnet-name':self.location['name'],
+                    'location':self._getLocationDict(),
+                    'prototype-name':self.allPrototypes[p]+"@"+pip+":"+str(pport),
+                    'prototype-description':"hello, I'm a prototype"
+                    }
+            ## send prototype info to add it to server
+            if(self.socket.connected):
+                self.socket.emit('add-prototype', pInfo)
+                self.socket.wait_for_callbacks(seconds=0.5)
+                if(self.lastRequestResult):
+                    self.sentPrototypes[p] = self.allPrototypes[p]
+                    self.lastRequestResult = False
 
         ## check for disconnected prototypes
         delQ = Queue()
@@ -83,10 +124,17 @@ class HttpReceiver(MessageReceiverInterface):
                         'location':self._getLocationDict(),
                         'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
                         }
-                ## TODO: send this prototype info
-                del self.sentPrototypes[p]
+                ## send prototype info to remove it from server
+                if(self.socket.connected):
+                    self.socket.emit('remove-prototype', pInfo)
+                    self.socket.wait_for_callbacks(seconds=0.5)
+                    if(self.lastRequestResult):
+                        del self.sentPrototypes[p]
+                        self.lastRequestResult = False
 
         ## TODO: check and send new messages
+        ##        HERE. DO IT!
+
         ## ask for new messages
         now = time()
         if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
@@ -95,16 +143,27 @@ class HttpReceiver(MessageReceiverInterface):
                     'location':self._getLocationDict(),
                     'since':self.lastWebCheck
                     }
-            ## TODO: send the request
-            ## if successful request
-            self.lastWebCheck = now
+            ## send prototype info to remove it from server
+            if(self.socket.connected):
+                self.socket.emit('check-messages', rInfo)
+                self.socket.wait_for_callbacks(seconds=0.5)
+                if(self.lastRequestResult):
+                    self.lastWebCheck = now
+                    self.lastRequestResult = False
 
-    ## end sms receiver
+    ## process message request reply
+    def _onMessageRequestReply(*args):
+        ## TODO: parse messages, send to prototypes.
+        self.lastRequestResult = True
+
+    ## process other replies
+    def _onServerReply(*args):
+        self.lastRequestResult = True
+
+    ## end http receiver; disconnect socket
     def stop(self):
         if(self.socketConnected):
-            ## TODO: probably disconnect nicely
-            pass
-
+            self.socket.disconnect()
 
 
 class SmsReceiver(MessageReceiverInterface):
