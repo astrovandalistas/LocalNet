@@ -50,12 +50,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.lastRequestResult = False
         self.addedToServer = False
         self.lastWebCheck = time()
-        localNetInfo = {
-                        'localnet-name':self.location['name'],
-                        'location':self._getLocationDict(),
-                        'localnet-description':self.localNetDescription,
-                        'receivers':self.allReceivers.keys()
-                        }
+
         ## try to open socket and send localnet info
         try:
             self.socket = SocketIO(self.serverIp, self.serverPort)
@@ -67,6 +62,12 @@ class HttpReceiver(MessageReceiverInterface):
             self.socketConnected = True
             self.socket.on('message-request-reply',self._onMessageRequestReply)
             self.socket.on('server-reply',self._onServerReply)
+            localNetInfo = {
+                            'localnet-name':self.location['name'],
+                            'location':self._getLocationDict(),
+                            'localnet-description':self.localNetDescription,
+                            'receivers':self.allReceivers.keys()
+                            }
             self.socket.emit('add-localnet', localNetInfo)
             self.socket.wait_for_callbacks(seconds=1.0)
             self.addedToServer = self.lastRequestResult
@@ -75,19 +76,21 @@ class HttpReceiver(MessageReceiverInterface):
         return self.socketConnected
 
     def update(self):
+        if(not self.socket.connected):
+            return
+        
         ## if local net not on web server, add to server
         if(not self.addedToServer):
             localNetInfo = {
-                        'localnet-name':self.location['name'],
-                        'location':self._getLocationDict(),
-                        'localnet-description':self.localNetDescription,
-                        'receivers':self.allReceivers.keys()
-                        }
-            if(self.socket.connected):
-                self.socket.emit('add-localnet', localNetInfo)
-                self.socket.wait_for_callbacks(seconds=0.5)
-                self.addedToServer = self.lastRequestResult
-                self.lastRequestResult = False
+                            'localnet-name':self.location['name'],
+                            'location':self._getLocationDict(),
+                            'localnet-description':self.localNetDescription,
+                            'receivers':self.allReceivers.keys()
+                            }
+            self.socket.emit('add-localnet', localNetInfo)
+            self.socket.wait_for_callbacks(seconds=0.5)
+            self.addedToServer = self.lastRequestResult
+            self.lastRequestResult = False
 
         ## check for new prototypes
         addQ = Queue()
@@ -97,19 +100,18 @@ class HttpReceiver(MessageReceiverInterface):
         while (not addQ.empty()):
             p = addQ.get()
             (pip,pport) = p
+            ## send prototype info to add it to server
             pInfo = {
                     'localnet-name':self.location['name'],
                     'location':self._getLocationDict(),
                     'prototype-name':self.allPrototypes[p]+"@"+pip+":"+str(pport),
                     'prototype-description':"hello, I'm a prototype"
                     }
-            ## send prototype info to add it to server
-            if(self.socket.connected):
-                self.socket.emit('add-prototype', pInfo)
-                self.socket.wait_for_callbacks(seconds=0.5)
-                if(self.lastRequestResult):
-                    self.sentPrototypes[p] = self.allPrototypes[p]
-                    self.lastRequestResult = False
+            self.socket.emit('add-prototype', pInfo)
+            self.socket.wait_for_callbacks(seconds=0.5)
+            if(self.lastRequestResult):
+                self.sentPrototypes[p] = self.allPrototypes[p]
+                self.lastRequestResult = False
 
         ## check for disconnected prototypes
         delQ = Queue()
@@ -117,20 +119,19 @@ class HttpReceiver(MessageReceiverInterface):
             if (not p in self.allPrototypes):
                 delQ.put(p)
         while (not delQ.empty()):
-                p = delQ.get()
-                (pip,pport) = p
-                pInfo = {
-                        'localnet-name':self.location['name'],
-                        'location':self._getLocationDict(),
-                        'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
-                        }
-                ## send prototype info to remove it from server
-                if(self.socket.connected):
-                    self.socket.emit('remove-prototype', pInfo)
-                    self.socket.wait_for_callbacks(seconds=0.5)
-                    if(self.lastRequestResult):
-                        del self.sentPrototypes[p]
-                        self.lastRequestResult = False
+            p = delQ.get()
+            (pip,pport) = p
+            ## send prototype info to remove it from server
+            pInfo = {
+                    'localnet-name':self.location['name'],
+                    'location':self._getLocationDict(),
+                    'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
+                    }
+            self.socket.emit('remove-prototype', pInfo)
+            self.socket.wait_for_callbacks(seconds=0.5)
+            if(self.lastRequestResult):
+                del self.sentPrototypes[p]
+                self.lastRequestResult = False
 
         ## send new messages to server
         for m in self.database.select().where(self.database.published == False):
@@ -139,6 +140,7 @@ class HttpReceiver(MessageReceiverInterface):
                 ## make sure it's a real prototype, not an osc repeater
                 if((str(i),int(p)) in self.allPrototypes):
                     prots.append(self.allPrototypes[(str(i), int(p))])
+
             mInfo = {
                     'localnet-name':self.location['name'],
                     'location':self._getLocationDict(),
@@ -150,13 +152,12 @@ class HttpReceiver(MessageReceiverInterface):
                     'hash-tag':m.hashTag                    
                     }
             ## send message to server
-            if(self.socket.connected):
-                self.socket.emit('add-message', mInfo)
-                self.socket.wait_for_callbacks(seconds=0.5)
-                if(self.lastRequestResult):
-                    m.published = True
-                    m.save()
-                    self.lastRequestResult = False
+            self.socket.emit('add-message', mInfo)
+            self.socket.wait_for_callbacks(seconds=0.5)
+            if(self.lastRequestResult):
+                m.published = True
+                m.save()
+                self.lastRequestResult = False
 
         ## ask for new messages
         now = time()
@@ -167,12 +168,11 @@ class HttpReceiver(MessageReceiverInterface):
                     'since':self.lastWebCheck
                     }
             ## send prototype info to remove it from server
-            if(self.socket.connected):
-                self.socket.emit('check-messages', rInfo)
-                self.socket.wait_for_callbacks(seconds=0.5)
-                if(self.lastRequestResult):
-                    self.lastWebCheck = now
-                    self.lastRequestResult = False
+            self.socket.emit('check-messages', rInfo)
+            self.socket.wait_for_callbacks(seconds=0.5)
+            if(self.lastRequestResult):
+                self.lastWebCheck = now
+                self.lastRequestResult = False
 
     ## process message request reply
     def _onMessageRequestReply(*args):
