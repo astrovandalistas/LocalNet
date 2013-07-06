@@ -132,8 +132,31 @@ class HttpReceiver(MessageReceiverInterface):
                         del self.sentPrototypes[p]
                         self.lastRequestResult = False
 
-        ## TODO: check and send new messages
-        ##        HERE. DO IT!
+        ## send new messages to server
+        for m in self.database.select().where(self.database.published == False):
+            prots = []
+            for (i,p) in loads(m.prototypes):
+                ## make sure it's a real prototype, not an osc repeater
+                if((str(i),int(p)) in self.allPrototypes):
+                    prots.append(self.allPrototypes[(str(i), int(p))])
+            mInfo = {
+                    'localnet-name':self.location['name'],
+                    'location':self._getLocationDict(),
+                    'date-time':m.dateTime,
+                    'epoch':m.epoch,
+                    'message-text':str(m.text).decode('utf-8'),
+                    'receiver':m.receiver,
+                    'prototypes':prots,
+                    'hash-tag':m.hashTag                    
+                    }
+            ## send message to server
+            if(self.socket.connected):
+                self.socket.emit('add-message', mInfo)
+                self.socket.wait_for_callbacks(seconds=0.5)
+                if(self.lastRequestResult):
+                    m.published = True
+                    m.save()
+                    self.lastRequestResult = False
 
         ## ask for new messages
         now = time()
@@ -153,7 +176,7 @@ class HttpReceiver(MessageReceiverInterface):
 
     ## process message request reply
     def _onMessageRequestReply(*args):
-        ## TODO: parse messages, send to prototypes.
+        ## TODO: parse messages, send to prototypes
         self.lastRequestResult = True
 
     ## process other replies
