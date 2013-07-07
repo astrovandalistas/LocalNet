@@ -44,23 +44,25 @@ class HttpReceiver(MessageReceiverInterface):
         self.addedToServer = True
 
     def _onAddPrototypeSuccess(*args):
-        ## TODO: get pname, pip and pport from args 'prototype-name'
-        (pname,pip,pport) = "mega", "192.168.2.1", 8999
-        if((pip,pport) in self.allPrototypes):
-            self.sentPrototypes[(pip,pport)] = self.allPrototypes[(pip,pport)]
+        for arg in args:
+            if('prototype-name' in arg):
+                (pname,pip,pport) = arg['prototype-name'].replace('@',':').split(':')
+                if((pip,int(pport)) in self.allPrototypes):
+                    self.sentPrototypes[(pip,int(pport))] = self.allPrototypes[(pip,int(pport))]
 
     def _onRemovePrototypeSuccess(*args):
-        ## TODO: get pname, pip and pport from args 'prototype-name'
-        (pname,pip,pport) = "mega", "192.168.2.1", 8999
-        if((pip,pport) in self.sentPrototypes):
-            del self.sentPrototypes[(pip,pport)]
+        for arg in args:
+            if('prototype-name' in arg):
+                (pname,pip,pport) = arg['prototype-name'].replace('@',':').split(':')
+                if((pip,int(pport)) in self.sentPrototypes):
+                    del self.sentPrototypes[(pip,int(pport))]
 
     def _onAddMessageSuccess(*args):
-        ## TODO: get id from args 'message-id'
-        mid = 1
-        m = self.database.get(self.database.id == mid)
-        m.published = True
-        m.save()
+        for arg in args:
+            if('id' in arg):
+                m = self.database.get(self.database.id == int(arg['id']))
+                m.published = True
+                m.save()
 
     ## process message request reply
     def _onCheckMessagesSuccess(*args):
