@@ -45,22 +45,22 @@ class HttpReceiver(MessageReceiverInterface):
 
     def _onAddPrototypeSuccess(*args):
         for arg in args:
-            if('prototype-name' in arg):
-                (pname,pip,pport) = arg['prototype-name'].replace('@',':').split(':')
+            if('prototypeName' in arg):
+                (pname,pip,pport) = arg['prototypeName'].replace('@',':').split(':')
                 if((pip,int(pport)) in self.allPrototypes):
                     self.sentPrototypes[(pip,int(pport))] = self.allPrototypes[(pip,int(pport))]
 
     def _onRemovePrototypeSuccess(*args):
         for arg in args:
-            if('prototype-name' in arg):
-                (pname,pip,pport) = arg['prototype-name'].replace('@',':').split(':')
+            if('prototypeName' in arg):
+                (pname,pip,pport) = arg['prototypeName'].replace('@',':').split(':')
                 if((pip,int(pport)) in self.sentPrototypes):
                     del self.sentPrototypes[(pip,int(pport))]
 
     def _onAddMessageSuccess(*args):
         for arg in args:
-            if('id' in arg):
-                m = self.database.get(self.database.id == int(arg['id']))
+            if('messageId' in arg):
+                m = self.database.get(self.database.id == int(arg['messageId']))
                 m.published = True
                 m.save()
 
@@ -103,9 +103,9 @@ class HttpReceiver(MessageReceiverInterface):
         ## if local net not on web server, add to server
         if(not self.addedToServer):
             localNetInfo = {
-                            'localnet-name':self.location['name'],
+                            'localnetName':self.location['name'],
                             'location':self._getLocationDict(),
-                            'localnet-description':self.localNetDescription,
+                            'localnetDescription':self.localNetDescription,
                             'receivers':self.allReceivers.keys()
                             }
             self.socket.emit('add-localnet', localNetInfo)
@@ -120,10 +120,10 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to add it to server
             pInfo = {
-                    'localnet-name':self.location['name'],
+                    'localnetName':self.location['name'],
                     'location':self._getLocationDict(),
-                    'prototype-name':self.allPrototypes[p]+"@"+pip+":"+str(pport),
-                    'prototype-description':"hello, I'm a prototype"
+                    'prototypeName':self.allPrototypes[p]+"@"+pip+":"+str(pport),
+                    'prototypeDescription':"hello, I'm a prototype"
                     }
             self.socket.emit('add-prototype', pInfo)
 
@@ -137,9 +137,9 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to remove it from server
             pInfo = {
-                    'localnet-name':self.location['name'],
+                    'localnetName':self.location['name'],
                     'location':self._getLocationDict(),
-                    'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
+                    'prototypeName':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
                     }
             self.socket.emit('remove-prototype', pInfo)
 
@@ -152,15 +152,15 @@ class HttpReceiver(MessageReceiverInterface):
                     prots.append(self.allPrototypes[(str(i), int(p))])
 
             mInfo = {
-                    'localnet-name':self.location['name'],
+                    'localnetName':self.location['name'],
                     'location':self._getLocationDict(),
-                    'date-time':m.dateTime,
+                    'dateTime':m.dateTime,
                     'epoch':m.epoch,
-                    'message-id':m.id,
-                    'message-text':str(m.text).decode('utf-8'),
+                    'messageId':m.id,
+                    'messageText':str(m.text).decode('utf-8'),
                     'receiver':m.receiver,
                     'prototypes':prots,
-                    'hash-tag':m.hashTag                    
+                    'hashTag':m.hashTag                    
                     }
             self.socket.emit('add-message', mInfo)
 
@@ -168,7 +168,7 @@ class HttpReceiver(MessageReceiverInterface):
         now = time()
         if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
             rInfo = {
-                    'localnet-name':self.location['name'],
+                    'localnetName':self.location['name'],
                     'location':self._getLocationDict(),
                     'since':self.lastWebCheck
                     }
