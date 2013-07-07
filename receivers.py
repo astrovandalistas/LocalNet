@@ -39,6 +39,33 @@ class HttpReceiver(MessageReceiverInterface):
                 'country':self.location['country'],
                 'coordinates':self.location['coordinates']
                 }
+    ## server reply party !!!
+    def _onAddLocalNetSuccess(*args):
+        self.addedToServer = True
+
+    def _onAddPrototypeSuccess(*args):
+        ## TODO: get pname, pip and pport from args 'prototype-name'
+        (pname,pip,pport) = "mega", "192.168.2.1", 8999
+        if((pip,pport) in self.allPrototypes):
+            self.sentPrototypes[(pip,pport)] = self.allPrototypes[(pip,pport)]
+
+    def _onRemovePrototypeSuccess(*args):
+        ## TODO: get pname, pip and pport from args 'prototype-name'
+        (pname,pip,pport) = "mega", "192.168.2.1", 8999
+        if((pip,pport) in self.sentPrototypes):
+            del self.sentPrototypes[(pip,pport)]
+
+    def _onAddMessageSuccess(*args):
+        ## TODO: get id from args 'message-id'
+        mid = 1
+        m = self.database.get(self.database.id == mid)
+        m.published = True
+        m.save()
+
+    ## process message request reply
+    def _onCheckMessagesSuccess(*args):
+        self.lastWebCheck = time()
+        ## TODO: parse messages, send to prototypes
 
     ## setup socket communication to server
     def setup(self, db, osc, loc):
@@ -47,7 +74,6 @@ class HttpReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "http"
         self.socketConnected = False
-        self.lastRequestResult = False
         self.addedToServer = False
         self.lastWebCheck = time()
 
@@ -60,18 +86,11 @@ class HttpReceiver(MessageReceiverInterface):
                     self.serverIp+":"+str(self.serverPort))
         else:
             self.socketConnected = True
-            self.socket.on('message-request-reply',self._onMessageRequestReply)
-            self.socket.on('server-reply',self._onServerReply)
-            localNetInfo = {
-                            'localnet-name':self.location['name'],
-                            'location':self._getLocationDict(),
-                            'localnet-description':self.localNetDescription,
-                            'receivers':self.allReceivers.keys()
-                            }
-            self.socket.emit('add-localnet', localNetInfo)
-            self.socket.wait_for_callbacks(seconds=1.0)
-            self.addedToServer = self.lastRequestResult
-            self.lastRequestResult = False
+            self.socket.on('add-localnet-success',self._onAddLocalNetSuccess)
+            self.socket.on('add-prototype-success',self._onAddPrototypeSuccess)
+            self.socket.on('remove-prototype-success',self._onRemovePrototypeSuccess)
+            self.socket.on('add-message-success',self._onAddMessageSuccess)
+            self.socket.on('check-messages-success',self._onCheckMessagesSuccess)
 
         return self.socketConnected
 
@@ -88,9 +107,6 @@ class HttpReceiver(MessageReceiverInterface):
                             'receivers':self.allReceivers.keys()
                             }
             self.socket.emit('add-localnet', localNetInfo)
-            self.socket.wait_for_callbacks(seconds=0.5)
-            self.addedToServer = self.lastRequestResult
-            self.lastRequestResult = False
 
         ## check for new prototypes
         addQ = Queue()
@@ -108,10 +124,6 @@ class HttpReceiver(MessageReceiverInterface):
                     'prototype-description':"hello, I'm a prototype"
                     }
             self.socket.emit('add-prototype', pInfo)
-            self.socket.wait_for_callbacks(seconds=0.5)
-            if(self.lastRequestResult):
-                self.sentPrototypes[p] = self.allPrototypes[p]
-                self.lastRequestResult = False
 
         ## check for disconnected prototypes
         delQ = Queue()
@@ -128,10 +140,6 @@ class HttpReceiver(MessageReceiverInterface):
                     'prototype-name':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
                     }
             self.socket.emit('remove-prototype', pInfo)
-            self.socket.wait_for_callbacks(seconds=0.5)
-            if(self.lastRequestResult):
-                del self.sentPrototypes[p]
-                self.lastRequestResult = False
 
         ## send new messages to server
         for m in self.database.select().where(self.database.published == False):
@@ -146,20 +154,15 @@ class HttpReceiver(MessageReceiverInterface):
                     'location':self._getLocationDict(),
                     'date-time':m.dateTime,
                     'epoch':m.epoch,
+                    'message-id':m.id,
                     'message-text':str(m.text).decode('utf-8'),
                     'receiver':m.receiver,
                     'prototypes':prots,
                     'hash-tag':m.hashTag                    
                     }
-            ## send message to server
             self.socket.emit('add-message', mInfo)
-            self.socket.wait_for_callbacks(seconds=0.5)
-            if(self.lastRequestResult):
-                m.published = True
-                m.save()
-                self.lastRequestResult = False
 
-        ## ask for new messages
+        ## check if there are messages on server
         now = time()
         if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
             rInfo = {
@@ -167,21 +170,7 @@ class HttpReceiver(MessageReceiverInterface):
                     'location':self._getLocationDict(),
                     'since':self.lastWebCheck
                     }
-            ## send prototype info to remove it from server
             self.socket.emit('check-messages', rInfo)
-            self.socket.wait_for_callbacks(seconds=0.5)
-            if(self.lastRequestResult):
-                self.lastWebCheck = now
-                self.lastRequestResult = False
-
-    ## process message request reply
-    def _onMessageRequestReply(*args):
-        ## TODO: parse messages, send to prototypes
-        self.lastRequestResult = True
-
-    ## process other replies
-    def _onServerReply(*args):
-        self.lastRequestResult = True
 
     ## end http receiver; disconnect socket
     def stop(self):
