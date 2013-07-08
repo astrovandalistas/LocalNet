@@ -63,7 +63,7 @@ class HttpReceiver(MessageReceiverInterface):
                     print self.sentPrototypes[(pip,int(pport))]+" was removed from server"
                     del self.sentPrototypes[(pip,int(pport))]
 
-    def _onAddMessageSuccess(self, *args):
+    def _onAddLocalNetMessageSuccess(self, *args):
         for arg in args:
             if('messageId' in arg):
                 if((self.largestSentMessageId+1) == int(arg['messageId'])):
@@ -71,7 +71,7 @@ class HttpReceiver(MessageReceiverInterface):
                     self.largestSentMessageId += 1
 
     ## process message from server
-    def _onReceiveMessage(self, *args):
+    def _onAddServerMessage(self, *args):
         for arg in args:
             mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
             mText = str(arg['messageText']).decode('utf-8') if('messageText' in arg) else ""
@@ -118,8 +118,7 @@ class HttpReceiver(MessageReceiverInterface):
                 'prototypes':prots
                 }
         print "sending message "+str(msg.id)+":"+str(msg.text).decode('utf-8')+" to server"
-        self.socket.emit('addMessage', mInfo)
-
+        self.socket.emit('addLocalNetMessage', mInfo)
 
     ## setup socket communication to server
     def setup(self, db, osc, loc):
@@ -145,8 +144,8 @@ class HttpReceiver(MessageReceiverInterface):
             self.socket.on('addLocalNetSuccess',self._onAddLocalNetSuccess)
             self.socket.on('addPrototypeSuccess',self._onAddPrototypeSuccess)
             self.socket.on('removePrototypeSuccess',self._onRemovePrototypeSuccess)
-            self.socket.on('addMessageSuccess',self._onAddMessageSuccess)
-            self.socket.on('receiveMessage',self._onReceiveMessage)
+            self.socket.on('addLocalNetMessageSuccess',self._onAddLocalNetMessageSuccess)
+            self.socket.on('addServerMessage',self._onAddServerMessage)
 
         return self.socketConnected
 
