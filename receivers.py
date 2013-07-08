@@ -40,38 +40,63 @@ class HttpReceiver(MessageReceiverInterface):
                 'coordinates':self.location['coordinates']
                 }
     ## server reply party !!!
-    def _onAddLocalNetSuccess(*args):
+    def _onAddLocalNetSuccess(self, *args):
         self.addedToServer = True
         for arg in args:
             if('epoch' in arg):
-                mQuery = self.database.select()
-                for m in mQuery.where(self.database.epoch < int(arg['epoch'])).order_by(self.database.id):
-                    self._sendMessage(m)
+                print "localNet was added to server"
+                self.serverIsWaitingForMessagesSince = float(arg['epoch'])
 
-    def _onAddPrototypeSuccess(*args):
+    def _onAddPrototypeSuccess(self, *args):
         for arg in args:
             if('prototypeAddress' in arg):
                 (pip,pport) = arg['prototypeAddress'].split(':')
                 if((pip,int(pport)) in self.allPrototypes):
+                    print self.allPrototypes[(pip,int(pport))]+" was added to server"
                     self.sentPrototypes[(pip,int(pport))] = self.allPrototypes[(pip,int(pport))]
 
-    def _onRemovePrototypeSuccess(*args):
+    def _onRemovePrototypeSuccess(self, *args):
         for arg in args:
             if('prototypeAddress' in arg):
                 (pip,pport) = arg['prototypeAddress'].split(':')
                 if((pip,int(pport)) in self.sentPrototypes):
+                    print self.sentPrototypes[(pip,int(pport))]+" was removed from server"
                     del self.sentPrototypes[(pip,int(pport))]
 
-    def _onAddMessageSuccess(*args):
+    def _onAddMessageSuccess(self, *args):
         for arg in args:
             if('messageId' in arg):
                 if((self.largestSentMessageId+1) == int(arg['messageId'])):
+                    print "message "+str(int(arg['messageId']))+" was added to server"
                     self.largestSentMessageId += 1
 
-    ## process message request reply
-    def _onCheckMessagesSuccess(*args):
-        ## TODO: parse messages, send to prototypes
-        pass
+    ## process message from server
+    def _onReceiveMessage(self, *args):
+        for arg in args:
+            mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
+            mText = str(arg['messageText']).decode('utf-8') if('messageText' in arg) else ""
+            mPrototype = str(arg['prototype']) if('prototype' in arg) else ""
+            mUser = str(arg['user']) if('user' in arg) else ""
+
+            if(not mText is ""):
+                ## send to all subscribers
+                if(mPrototype is ""):
+                    self.sendToAllSubscribers(mText)
+                    mPrototype=self.subscriberList
+                ## send to one subscriber
+                else:
+                    (ip,port) = (str(mPrototype[0]),int(mPrototype[1]))
+                    if((ip,port) in self.subscriberList):
+                        self.sendToSubscriber(ip,port,mText)
+                    mPrototype=[(ip,port)]
+                ## log onto local database
+                self.database.create(epoch=mEpoch,
+                                     dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
+                                     text=mText.encode('utf-8'),
+                                     receiver="http",
+                                     hashTags="",
+                                     prototypes=dumps(mPrototype),
+                                     user=mUser)
 
     def _sendMessage(self, msg):
         prots = []
@@ -92,6 +117,7 @@ class HttpReceiver(MessageReceiverInterface):
                 'receiver':msg.receiver,
                 'prototypes':prots
                 }
+        print "sending message "+str(msg.id)+":"+str(msg.text).decode('utf-8')+" to server"
         self.socket.emit('addMessage', mInfo)
 
 
@@ -103,7 +129,9 @@ class HttpReceiver(MessageReceiverInterface):
         self.name = "http"
         self.socketConnected = False
         self.addedToServer = False
-        self.largestSentMessageId = 0
+        self.largestSentMessageId = -100
+        self.serverIsWaitingForMessagesSince = -100
+        self.lastMessagesSent = time()
 
         ## try to open socket and send localnet info
         try:
@@ -114,10 +142,11 @@ class HttpReceiver(MessageReceiverInterface):
                     self.serverIp+":"+str(self.serverPort))
         else:
             self.socketConnected = True
-            self.socket.on('addLocalnetSuccess',self._onAddLocalNetSuccess)
+            self.socket.on('addLocalNetSuccess',self._onAddLocalNetSuccess)
             self.socket.on('addPrototypeSuccess',self._onAddPrototypeSuccess)
             self.socket.on('removePrototypeSuccess',self._onRemovePrototypeSuccess)
             self.socket.on('addMessageSuccess',self._onAddMessageSuccess)
+            self.socket.on('receiveMessage',self._onReceiveMessage)
 
         return self.socketConnected
 
@@ -136,11 +165,23 @@ class HttpReceiver(MessageReceiverInterface):
                             }
             self.socket.emit('addLocalNet', localNetInfo)
 
+        ## if server is waiting for messages since an epoch
+        if(self.serverIsWaitingForMessagesSince > -1):
+            mQuery = self.database.select()
+            mQuery = mQuery.where(self.database.epoch > self.serverIsWaitingForMessagesSince).order_by(self.database.id)
+            for m in mQuery.limit(1):
+                self.largestSentMessageId = m.id-1
+            for m in mQuery:
+                self._sendMessage(m)
+            self.lastMessagesSent = time()
+            self.serverIsWaitingForMessagesSince = -1
+
         ## check for new prototypes
         addQ = Queue()
         for p in self.allPrototypes:
             if (not p in self.sentPrototypes):
                 addQ.put(p)
+                print "adding "+self.allPrototypes[p]+" to server"
         while (not addQ.empty()):
             p = addQ.get()
             (pip,pport) = p
@@ -149,7 +190,7 @@ class HttpReceiver(MessageReceiverInterface):
                     'localNetName':self.location['name'],
                     'location':self._getLocationDict(),
                     'prototypeName':self.allPrototypes[p],
-                    'prototyeAddress':pip+":"+str(pport),
+                    'prototypeAddress':pip+":"+str(pport),
                     'prototypeDescription':"hello, I'm a prototype"
                     }
             self.socket.emit('addPrototype', pInfo)
@@ -159,6 +200,7 @@ class HttpReceiver(MessageReceiverInterface):
         for p in self.sentPrototypes:
             if (not p in self.allPrototypes):
                 delQ.put(p)
+                print "removing "+self.sentPrototypes[p]+" from server"
         while (not delQ.empty()):
             p = delQ.get()
             (pip,pport) = p
@@ -167,14 +209,16 @@ class HttpReceiver(MessageReceiverInterface):
                     'localNetName':self.location['name'],
                     'location':self._getLocationDict(),
                     'prototypeName':self.sentPrototypes[p],
-                    'prototyeAddress':pip+":"+str(pport)
+                    'prototypeAddress':pip+":"+str(pport)
                     }
             self.socket.emit('removePrototype', pInfo)
 
         ## send new messages to server
-        mQuery = self.database.select()
-        for m in mQuery.where(self.database.id > self.largestSentMessageId).order_by(self.database.id):
-            self._sendMessage(m)
+        if(time()-self.lastMessagesSent > 1.0):
+            mQuery = self.database.select()
+            for m in mQuery.where(self.database.id > self.largestSentMessageId).order_by(self.database.id):
+                self._sendMessage(m)
+            self.lastMessagesSent = time()
 
     ## end http receiver; disconnect socket
     def stop(self):
