@@ -19,7 +19,8 @@ LOCAL_NET_DESCRIPTION = "This is a house on 542 Lewis. Best fireworks display th
 OSC_SERVER_PORT = 8888
 MASTER_SERVER_IP = "127.0.0.1"
 MASTER_SERVER_PORT = 7777
-WEB_SERVER_IP = "127.0.0.1"
+##WEB_SERVER_IP = "127.0.0.1"
+WEB_SERVER_IP = "192.168.1.119"
 WEB_SERVER_PORT = 3700
 
 ## init database
@@ -28,9 +29,9 @@ class Message(Model):
     dateTime = CharField()
     text = BlobField()
     receiver = CharField()
-    hashTag = CharField()
+    hashTags = CharField()
     prototypes = CharField()
-    published = BooleanField()
+    user = CharField()
 
 def setup():
     global prototypes, mOscClient, oscPingMessage
