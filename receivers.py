@@ -71,6 +71,7 @@ class HttpReceiver(MessageReceiverInterface):
                     self.largestSentMessageId += 1
 
     ## process message from server
+    ## TODO: test this!!!
     def _onAddServerMessage(self, *args):
         for arg in args:
             mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
@@ -90,6 +91,7 @@ class HttpReceiver(MessageReceiverInterface):
                         self.sendToSubscriber(ip,port,mText)
                     mPrototype=[(ip,port)]
                 ## log onto local database
+                ## TODO: parse out hashtags
                 self.database.create(epoch=mEpoch,
                                      dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
                                      text=mText.encode('utf-8'),
