@@ -4,6 +4,7 @@ from interfaces import MessageReceiverInterface
 from threading import Thread
 from time import time, strftime, localtime
 from json import loads, dumps
+import re
 from Queue import Queue
 from requests import ConnectionError
 from socketIO_client import SocketIO, SocketIOError
@@ -31,6 +32,8 @@ class HttpReceiver(MessageReceiverInterface):
         ## this is a dict of (ip,port) -> prototype 
         ## for keeping track of prototypes that have been sent to server
         self.sentPrototypes = {}
+        ## reg-exp pattern for finding hashtags in messages
+        self.hashTagMatcher = re.compile(r"([#])(\w+)")
 
     def _getLocationDict(self):
         return {
@@ -91,12 +94,14 @@ class HttpReceiver(MessageReceiverInterface):
                         self.sendToSubscriber(ip,port,mText)
                     mPrototype=[(ip,port)]
                 ## log onto local database
-                ## TODO: parse out hashtags
+                msgHashTags = []
+                for (k,v) in self.hashTagMatcher.findall(mText):
+                    msgHashTags.append(str(k)+str(v))
                 self.database.create(epoch=mEpoch,
                                      dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
                                      text=mText.encode('utf-8'),
                                      receiver="http",
-                                     hashTags="",
+                                     hashTags=dumps(msgHashTags),
                                      prototypes=dumps(mPrototype),
                                      user=mUser)
 
