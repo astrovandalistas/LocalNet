@@ -42,32 +42,58 @@ class HttpReceiver(MessageReceiverInterface):
     ## server reply party !!!
     def _onAddLocalNetSuccess(*args):
         self.addedToServer = True
+        for arg in args:
+            if('epoch' in arg):
+                mQuery = self.database.select()
+                for m in mQuery.where(self.database.epoch < int(arg['epoch'])).order_by(self.database.id):
+                    self._sendMessage(m)
 
     def _onAddPrototypeSuccess(*args):
         for arg in args:
-            if('prototypeName' in arg):
-                (pname,pip,pport) = arg['prototypeName'].replace('@',':').split(':')
+            if('prototypeAddress' in arg):
+                (pip,pport) = arg['prototypeAddress'].split(':')
                 if((pip,int(pport)) in self.allPrototypes):
                     self.sentPrototypes[(pip,int(pport))] = self.allPrototypes[(pip,int(pport))]
 
     def _onRemovePrototypeSuccess(*args):
         for arg in args:
-            if('prototypeName' in arg):
-                (pname,pip,pport) = arg['prototypeName'].replace('@',':').split(':')
+            if('prototypeAddress' in arg):
+                (pip,pport) = arg['prototypeAddress'].split(':')
                 if((pip,int(pport)) in self.sentPrototypes):
                     del self.sentPrototypes[(pip,int(pport))]
 
     def _onAddMessageSuccess(*args):
         for arg in args:
             if('messageId' in arg):
-                m = self.database.get(self.database.id == int(arg['messageId']))
-                m.published = True
-                m.save()
+                if((self.largestSentMessageId+1) == int(arg['messageId'])):
+                    self.largestSentMessageId += 1
 
     ## process message request reply
     def _onCheckMessagesSuccess(*args):
-        self.lastWebCheck = time()
         ## TODO: parse messages, send to prototypes
+        pass
+
+    def _sendMessage(self, msg):
+        prots = []
+        for (i,p) in loads(msg.prototypes):
+            ## make sure it's a real prototype, not an osc repeater
+            if((str(i),int(p)) in self.allPrototypes):
+                prots.append(self.allPrototypes[(str(i), int(p))])
+
+        mInfo = {
+                'localNetName':self.location['name'],
+                'location':self._getLocationDict(),
+                'dateTime':msg.dateTime,
+                'epoch':msg.epoch,
+                'messageId':msg.id,
+                'messageText':str(msg.text).decode('utf-8'),
+                'hashTags':msg.hashTags,
+                'user':msg.user,
+                'receiver':msg.receiver,
+                'prototypes':prots
+                }
+        self.socket.emit('addMessage', mInfo)
+
 
     ## setup socket communication to server
     def setup(self, db, osc, loc):
@@ -77,7 +103,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.name = "http"
         self.socketConnected = False
         self.addedToServer = False
-        self.lastWebCheck = time()
+        self.largestSentMessageId = 0
 
         ## try to open socket and send localnet info
         try:
@@ -88,11 +114,10 @@ class HttpReceiver(MessageReceiverInterface):
                     self.serverIp+":"+str(self.serverPort))
         else:
             self.socketConnected = True
-            self.socket.on('add-localnet-success',self._onAddLocalNetSuccess)
-            self.socket.on('add-prototype-success',self._onAddPrototypeSuccess)
-            self.socket.on('remove-prototype-success',self._onRemovePrototypeSuccess)
-            self.socket.on('add-message-success',self._onAddMessageSuccess)
-            self.socket.on('check-messages-success',self._onCheckMessagesSuccess)
+            self.socket.on('addLocalnetSuccess',self._onAddLocalNetSuccess)
+            self.socket.on('addPrototypeSuccess',self._onAddPrototypeSuccess)
+            self.socket.on('removePrototypeSuccess',self._onRemovePrototypeSuccess)
+            self.socket.on('addMessageSuccess',self._onAddMessageSuccess)
 
         return self.socketConnected
 
@@ -103,12 +128,13 @@ class HttpReceiver(MessageReceiverInterface):
         ## if local net not on web server, add to server
         if(not self.addedToServer):
             localNetInfo = {
-                            'localnetName':self.location['name'],
+                            'localNetName':self.location['name'],
                             'location':self._getLocationDict(),
-                            'localnetDescription':self.localNetDescription,
-                            'receivers':self.allReceivers.keys()
+                            'localNetDescription':self.localNetDescription,
+                            'receivers':self.allReceivers.keys(),
+                            'hashTags':self.allReceivers['twitter'].hashTags
                             }
-            self.socket.emit('add-localnet', localNetInfo)
+            self.socket.emit('addLocalNet', localNetInfo)
 
         ## check for new prototypes
         addQ = Queue()
@@ -120,12 +146,13 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to add it to server
             pInfo = {
-                    'localnetName':self.location['name'],
+                    'localNetName':self.location['name'],
                     'location':self._getLocationDict(),
-                    'prototypeName':self.allPrototypes[p]+"@"+pip+":"+str(pport),
+                    'prototypeName':self.allPrototypes[p],
+                    'prototyeAddress':pip+":"+str(pport),
                     'prototypeDescription':"hello, I'm a prototype"
                     }
-            self.socket.emit('add-prototype', pInfo)
+            self.socket.emit('addPrototype', pInfo)
 
         ## check for disconnected prototypes
         delQ = Queue()
@@ -137,42 +164,17 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to remove it from server
             pInfo = {
-                    'localnetName':self.location['name'],
+                    'localNetName':self.location['name'],
                     'location':self._getLocationDict(),
-                    'prototypeName':self.sentPrototypes[p]+"@"+pip+":"+str(pport)
+                    'prototypeName':self.sentPrototypes[p],
+                    'prototyeAddress':pip+":"+str(pport)
                     }
-            self.socket.emit('remove-prototype', pInfo)
+            self.socket.emit('removePrototype', pInfo)
 
         ## send new messages to server
-        for m in self.database.select().where(self.database.published == False):
-            prots = []
-            for (i,p) in loads(m.prototypes):
-                ## make sure it's a real prototype, not an osc repeater
-                if((str(i),int(p)) in self.allPrototypes):
-                    prots.append(self.allPrototypes[(str(i), int(p))])
-
-            mInfo = {
-                    'localnetName':self.location['name'],
-                    'location':self._getLocationDict(),
-                    'dateTime':m.dateTime,
-                    'epoch':m.epoch,
-                    'messageId':m.id,
-                    'messageText':str(m.text).decode('utf-8'),
-                    'receiver':m.receiver,
-                    'prototypes':prots,
-                    'hashTag':m.hashTag                    
-                    }
-            self.socket.emit('add-message', mInfo)
-
-        ## check if there are messages on server
-        now = time()
-        if(now - self.lastWebCheck > HttpReceiver.WEB_CHECK_PERIOD):
-            rInfo = {
-                    'localnetName':self.location['name'],
-                    'location':self._getLocationDict(),
-                    'since':self.lastWebCheck
-                    }
-            self.socket.emit('check-messages', rInfo)
+        mQuery = self.database.select()
+        for m in mQuery.where(self.database.id > self.largestSentMessageId).order_by(self.database.id):
+            self._sendMessage(m)
 
     ## end http receiver; disconnect socket
     def stop(self):
@@ -208,9 +210,9 @@ class SmsReceiver(MessageReceiverInterface):
                              dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime()),
                              text=smsTxt.encode('utf-8'),
                              receiver="sms",
-                             hashTag="",
+                             hashTags="",
                              prototypes=dumps(self.subscriberList),
-                             published=False)
+                             user="")
 
     ## setup gsm modem
     def setup(self, db, osc, loc):
@@ -380,7 +382,7 @@ class TwitterReceiver(MessageReceiverInterface):
     ## How often to check twitter (in seconds)
     TWITTER_CHECK_PERIOD = 6
     ## What to search for
-    SEARCH_TERM = ("#aeLab")
+    SEARCH_TERMS = ["#aeLab", "#aeffect"]
 
     ## setup twitter connection and internal variables
     def setup(self, db, osc, loc):
@@ -393,6 +395,7 @@ class TwitterReceiver(MessageReceiverInterface):
         self.twitterAuthenticated = False
         self.largestTweetId = 1
         self.twitterResults = None
+        self.hashTags = TwitterReceiver.SEARCH_TERMS
         ## read secrets from file
         inFile = open('oauth.txt', 'r')
         self.secrets = {}
@@ -422,13 +425,17 @@ class TwitterReceiver(MessageReceiverInterface):
                     ## send to all subscribers
                     self.sendToAllSubscribers(tweet['text'])
                     ## log onto local database
+                    msgHashTags = []
+                    for h in self.hashTags:
+                        if(h in tweet['text']):
+                            msgHashTags.append(h)
                     self.database.create(epoch=time(),
                                          dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime()),
                                          text=tweet['text'].encode('utf-8'),
                                          receiver="twitter",
-                                         hashTag=TwitterReceiver.SEARCH_TERM,
+                                         hashTags=dumps(msgHashTags),
                                          prototypes=dumps(self.subscriberList),
-                                         published=False)
+                                         user=tweet['user']['screen_name'])
             self.lastTwitterCheck = time()
 
     ## end twitterReceiver
@@ -463,7 +470,7 @@ class TwitterReceiver(MessageReceiverInterface):
     def _searchTwitter(self):
         if ((self.twitterAuthenticated) and (not self.mTwitter is None)):
             try:
-                self.twitterResults = self.mTwitter.search(q=TwitterReceiver.SEARCH_TERM,
+                self.twitterResults = self.mTwitter.search(q=" OR ".join(self.hashTags),
                                                            include_entities="false",
                                                            count="50",
                                                            result_type="recent",
