@@ -33,7 +33,7 @@ class HttpReceiver(MessageReceiverInterface):
         ## for keeping track of prototypes that have been sent to server
         self.sentPrototypes = {}
         ## reg-exp pattern for finding hashtags in messages
-        self.hashTagMatcher = re.compile(r"([#])(\w+)")
+        self.hashTagMatcher = re.compile(r"([#]\w+)")
 
     def _getLocationDict(self):
         return {
@@ -95,8 +95,8 @@ class HttpReceiver(MessageReceiverInterface):
                     mPrototype=[(ip,port)]
                 ## log onto local database
                 msgHashTags = []
-                for (k,v) in self.hashTagMatcher.findall(mText):
-                    msgHashTags.append(str(k)+str(v))
+                for ht in self.hashTagMatcher.findall(mText):
+                    msgHashTags.append(str(ht))
                 self.database.create(epoch=mEpoch,
                                      dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
                                      text=mText.encode('utf-8'),
