@@ -7,7 +7,7 @@ from json import loads, dumps
 import re
 from Queue import Queue
 from requests import ConnectionError
-from socketIO_client import SocketIO, SocketIOError
+from socketIO_client import SocketIO, SocketIOError, BaseNamespace
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
 from serial import SerialException
@@ -43,6 +43,9 @@ class HttpReceiver(MessageReceiverInterface):
                 'coordinates':self.location['coordinates']
                 }
     ## server reply party !!!
+    class localNetNamespace(BaseNamespace):
+        pass
+
     def _onAddLocalNetSuccess(self, *args):
         self.addedToServer = True
         for arg in args:
@@ -74,8 +77,8 @@ class HttpReceiver(MessageReceiverInterface):
                     self.largestSentMessageId += 1
 
     ## process message from server
-    ## TODO: test this!!!
     def _onAddServerMessage(self, *args):
+        print "got message from server"
         for arg in args:
             mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
             mText = str(arg['messageText']).decode('utf-8') if('messageText' in arg) else ""
@@ -89,14 +92,21 @@ class HttpReceiver(MessageReceiverInterface):
                     mPrototype=self.subscriberList
                 ## send to one subscriber
                 else:
+                    mPrototype = mPrototype.replace('[','').replace(']','').replace('u\'','').replace('\',',',')
+                    mPrototype = mPrototype.split(',')
                     (ip,port) = (str(mPrototype[0]),int(mPrototype[1]))
                     if((ip,port) in self.subscriberList):
+                        print "found prototype, sending to "+ip+":"+str(port)
                         self.sendToSubscriber(ip,port,mText)
+                    else:
+                        print "didn't find prototype at "+ip+":"+str(port)
                     mPrototype=[(ip,port)]
                 ## log onto local database
                 msgHashTags = []
                 for ht in self.hashTagMatcher.findall(mText):
                     msgHashTags.append(str(ht))
+                ## TODO: fix this: thread problem
+                """
                 self.database.create(epoch=mEpoch,
                                      dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
                                      text=mText.encode('utf-8'),
@@ -104,6 +114,7 @@ class HttpReceiver(MessageReceiverInterface):
                                      hashTags=dumps(msgHashTags),
                                      prototypes=dumps(mPrototype),
                                      user=mUser)
+                """
 
     def _sendMessage(self, msg):
         prots = []
@@ -125,7 +136,7 @@ class HttpReceiver(MessageReceiverInterface):
                 'prototypes':prots
                 }
         print "sending message "+str(msg.id)+":"+str(msg.text).decode('utf-8')+" to server"
-        self.socket.emit('addLocalNetMessage', mInfo)
+        self.localNetSocket.emit('addMessage', mInfo, self._onAddLocalNetMessageSuccess)
 
     ## setup socket communication to server
     def setup(self, db, osc, loc):
@@ -148,11 +159,8 @@ class HttpReceiver(MessageReceiverInterface):
                     self.serverIp+":"+str(self.serverPort))
         else:
             self.socketConnected = True
-            self.socket.on('addLocalNetSuccess',self._onAddLocalNetSuccess)
-            self.socket.on('addPrototypeSuccess',self._onAddPrototypeSuccess)
-            self.socket.on('removePrototypeSuccess',self._onRemovePrototypeSuccess)
-            self.socket.on('addLocalNetMessageSuccess',self._onAddLocalNetMessageSuccess)
-            self.socket.on('addServerMessage',self._onAddServerMessage)
+            self.localNetSocket = self.socket.define(self.localNetNamespace, '/localNet')
+            self.localNetSocket.on('addMessage', self._onAddServerMessage)
 
         return self.socketConnected
 
@@ -169,7 +177,8 @@ class HttpReceiver(MessageReceiverInterface):
                             'receivers':self.allReceivers.keys(),
                             'hashTags':self.allReceivers['twitter'].hashTags
                             }
-            self.socket.emit('addLocalNet', localNetInfo)
+            print "adding localNet to server"
+            self.localNetSocket.emit('addLocalNet', localNetInfo, self._onAddLocalNetSuccess)
 
         ## if server is waiting for messages since an epoch
         if(self.serverIsWaitingForMessagesSince > -1):
@@ -199,7 +208,7 @@ class HttpReceiver(MessageReceiverInterface):
                     'prototypeAddress':pip+":"+str(pport),
                     'prototypeDescription':"hello, I'm a prototype"
                     }
-            self.socket.emit('addPrototype', pInfo)
+            self.localNetSocket.emit('addPrototype', pInfo, self._onAddPrototypeSuccess)
 
         ## check for disconnected prototypes
         delQ = Queue()
@@ -217,7 +226,7 @@ class HttpReceiver(MessageReceiverInterface):
                     'prototypeName':self.sentPrototypes[p],
                     'prototypeAddress':pip+":"+str(pport)
                     }
-            self.socket.emit('removePrototype', pInfo)
+            self.localNetSocket.emit('removePrototype', pInfo, self._onRemovePrototypeSuccess)
 
         ## send new messages to server
         if(time()-self.lastMessagesSent > 1.0):
