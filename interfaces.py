@@ -195,10 +195,10 @@ class MessageReceiverInterface:
         while (not delQ.empty()):
             self.removeSubscriber(delQ.get())
     # Send OSC to specific subscriber
-    def _sendToSubscriber(msg,ip,port):
+    def _sendToSubscriber(self,msg,ip,port):
         try:
             self.oscClient.connect((ip, port))
-            self.oscClient.sendto(oscMsg, (ip, port))
+            self.oscClient.sendto(msg, (ip, port))
             self.oscClient.connect((ip, port))
         except OSCClientError:
             print ("no connection to "+ip+":"+str(port)
