@@ -5,6 +5,8 @@ from humod import Modem, actions, errors
 from serial import SerialException
 from peewee import *
 from json import loads, dumps
+from time import time, strftime, localtime
+from Queue import Queue
 
 class SmsReceiver(MessageReceiverInterface):
     """A class for receiving SMS messages and passing them to its subscribers"""
@@ -14,9 +16,9 @@ class SmsReceiver(MessageReceiverInterface):
         out = ""
         if(sms.startswith("00")):
             for c in sms.decode('hex'):
-                out += c.decode('latin-1')
+                out += c.decode('latin-1').encode('utf-8').decode('utf-8')
         else:
-            out += sms
+            out = sms
         return out
 
     ## Handler for new sms messages
@@ -29,14 +31,15 @@ class SmsReceiver(MessageReceiverInterface):
         print "received: "+smsTxt
         ## send to all subscribers
         self.sendToAllSubscribers(smsTxt)
-        ## log onto local database
-        self.database.create(epoch=time(),
-                             dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime()),
-                             text=smsTxt.encode('utf-8'),
-                             receiver="sms",
-                             hashTags="",
-                             prototypes=dumps(self.subscriberList),
-                             user="")
+
+        ## prepare to send to database (through queue due to threading)
+        self.dbQ.put({'epoch':time(),
+                      'dateTime':strftime("%Y/%m/%d %H:%M:%S", localtime()),
+                      'text':smsTxt.encode('utf-8'),
+                      'receiver':'sms',
+                      'hashTags':"",
+                      'prototypes':self.subscriberList,
+                      'user':""});
 
     ## setup gsm modem
     def setup(self, db, osc, loc):
@@ -45,6 +48,7 @@ class SmsReceiver(MessageReceiverInterface):
         self.location = loc
         self.name = "sms"
         self.modemReady = True
+        self.dbQ = Queue()
         ## setup modem for sms receiver
         mActions = [(actions.PATTERN['new sms'], self._smsHandler)]
         try:
@@ -64,7 +68,16 @@ class SmsReceiver(MessageReceiverInterface):
         return self.modemReady
 
     def update(self):
-        pass
+        ## log onto local database
+        while (not self.dbQ.empty()):
+            dbargs = self.dbQ.get()
+            self.database.create(epoch=dbargs['epoch'],
+                                 dateTime=dbargs['dateTime'],
+                                 text=dbargs['text'],
+                                 receiver=dbargs['receiver'],
+                                 hashTags=dumps(dbargs['hashTags']),
+                                 prototypes=dumps(dbargs['prototypes']),
+                                 user=dbargs['user'])
 
     ## end sms receiver
     def stop(self):
