@@ -3,7 +3,10 @@
 import time
 from Queue import Queue
 from OSC import OSCClient, OSCMessage, OSCClientError
-from receivers import TwitterReceiver, SmsReceiver, OscReceiver, HttpReceiver
+from TwitterReceiver import TwitterReceiver
+from OscReceiver import OscReceiver
+from SmsReceiver import SmsReceiver
+from HttpReceiver import HttpReceiver
 from peewee import *
 
 # these will probably be command line arguments or come from files
