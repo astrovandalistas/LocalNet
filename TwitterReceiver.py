@@ -6,7 +6,6 @@ from peewee import *
 from json import loads, dumps
 from threading import Thread
 from time import time, strftime, localtime
-from Queue import Queue
 
 class TwitterReceiver(MessageReceiverInterface):
     """A class for receiving Twitter messages and passing them to its
