@@ -9,7 +9,7 @@ from time import time, strftime, localtime
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
-    WEB_CHECK_PERIOD = 10
+    CONNECTION_CHECK_PERIOD = 10
     def __init__(self, others, protos, ip="127.0.0.1", port=3700, description=""):
         MessageReceiverInterface.__init__(self)
         self.localNetDescription = description
@@ -132,19 +132,9 @@ class HttpReceiver(MessageReceiverInterface):
         print "sending message "+str(msg.id)+":"+str(msg.text).decode('utf-8')+" to server"
         self.localNetSocket.emit('addMessage', mInfo, self._onAddLocalNetMessageSuccess)
 
-    ## setup socket communication to server
-    def setup(self, db, osc, loc):
-        self.database = db
-        self.oscClient = osc
-        self.location = loc
-        self.name = "http"
-        self.socketConnected = False
-        self.addedToServer = False
-        self.largestSentMessageId = -100
-        self.serverIsWaitingForMessagesSince = -100
-        self.lastMessagesSent = time()
-
-        ## try to open socket and send localnet info
+    def _attemptConnection(self):
+    	self.lastConnectionAttempt = time()
+    	## try to open socket and send localnet info
         try:
             self.socket = SocketIO(self.serverIp, self.serverPort)
         except SocketIOError:
@@ -156,12 +146,27 @@ class HttpReceiver(MessageReceiverInterface):
             self.localNetSocket = self.socket.define(self.localNetNamespace, '/localNet')
             self.localNetSocket.on('addMessage', self._onAddServerMessage)
 
-        return self.socketConnected
+    ## setup socket communication to server
+    def setup(self, db, osc, loc):
+        self.database = db
+        self.oscClient = osc
+        self.location = loc
+        self.name = "http"
+        self.socketConnected = False
+        self.addedToServer = False
+        self.largestSentMessageId = -100
+        self.serverIsWaitingForMessagesSince = -100
+        self.lastMessagesSent = time()
+        self.lastConnectionAttempt = 0
+
+        return True
 
     def update(self):
-        if(not self.socket.connected):
-            return
-        
+        if(not self.socketConnected):
+        	if(time()-self.lastConnectionAttempt > HttpReceiver.CONNECTION_CHECK_PERIOD):
+        		self._attemptConnection()
+        	return
+
         ## if local net not on web server, add to server
         if(not self.addedToServer):
             localNetInfo = {
