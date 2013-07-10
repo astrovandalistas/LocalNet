@@ -75,7 +75,7 @@ class HttpReceiver(MessageReceiverInterface):
         print "got message from server"
         for arg in args:
             mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
-            mText = str(arg['messageText']).decode('utf-8') if('messageText' in arg) else ""
+            mText = arg['messageText'] if('messageText' in arg) else ""
             mPrototype = str(arg['prototype']) if('prototype' in arg) else ""
             mUser = str(arg['user']) if('user' in arg) else ""
 
@@ -155,7 +155,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.name = "http"
         self.socketConnected = False
         self.addedToServer = False
-        self.largestSentMessageId = -100
+        self.largestSentMessageId = 0
         self.serverIsWaitingForMessagesSince = -100
         self.lastMessagesSent = time()
         self.lastConnectionAttempt = 0
@@ -242,7 +242,7 @@ class HttpReceiver(MessageReceiverInterface):
         	self.database.create(epoch=dbargs['epoch'],
                                  dateTime=dbargs['dateTime'],
                                  text=dbargs['text'],
-                                 receiver=dbargs['receiver']
+                                 receiver=dbargs['receiver'],
                                  hashTags=dumps(dbargs['hashTags']),
                                  prototypes=dumps(dbargs['prototypes']),
                                  user=dbargs['user'])
