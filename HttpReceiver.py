@@ -115,8 +115,7 @@ class HttpReceiver(MessageReceiverInterface):
         for (i,p) in loads(msg.prototypes):
             ## make sure it's a real prototype, not an osc repeater
             if((str(i),int(p)) in self.allPrototypes):
-                ## TODO: this should send a list of ip:ports
-                prots.append(self.allPrototypes[(str(i), int(p))])
+                prots.append((str(i), int(p)))
 
         mInfo = {
                 'localNetName':self.location['name'],
