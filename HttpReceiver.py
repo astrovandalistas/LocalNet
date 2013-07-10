@@ -92,9 +92,11 @@ class HttpReceiver(MessageReceiverInterface):
                     if((ip,port) in self.subscriberList):
                         print "found prototype, sending to "+ip+":"+str(port)
                         self.sendToSubscriber(ip,port,mText)
+                        mPrototype=[(ip,port)]
                     else:
-                        print "didn't find prototype at "+ip+":"+str(port)
-                    mPrototype=[(ip,port)]
+                        print "didn't find prototype at "+ip+":"+str(port)+", so sending to all"
+                        self.sendToAllSubscribers(mText)
+                        mPrototype=self.subscriberList
 
                 ## prepare to send to database (through queue due to threading)
                 msgHashTags = []
