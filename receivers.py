@@ -6,7 +6,6 @@ from time import time, strftime, localtime
 from json import loads, dumps
 import re
 from Queue import Queue
-from requests import ConnectionError
 from socketIO_client import SocketIO, SocketIOError, BaseNamespace
 from twython import Twython
 from OSC import OSCClient, OSCMessage, OSCServer, getUrlStr, OSCClientError
@@ -154,7 +153,7 @@ class HttpReceiver(MessageReceiverInterface):
         ## try to open socket and send localnet info
         try:
             self.socket = SocketIO(self.serverIp, self.serverPort)
-        except (SocketIOError, ConnectionError) as e:
+        except SocketIOError:
             self.socketConnected = False
             print ("couldn't connect to web server at "+
                     self.serverIp+":"+str(self.serverPort))
