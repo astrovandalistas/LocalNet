@@ -6,6 +6,7 @@ from peewee import *
 from json import loads, dumps
 import re
 from time import time, strftime, localtime
+from Queue import Queue
 
 class HttpReceiver(MessageReceiverInterface):
     """A class for receiving json/xml query results and passing them to its subscribers"""
@@ -94,20 +95,18 @@ class HttpReceiver(MessageReceiverInterface):
                     else:
                         print "didn't find prototype at "+ip+":"+str(port)
                     mPrototype=[(ip,port)]
-                ## log onto local database
+
+                ## prepare to send to database (through queue due to threading)
                 msgHashTags = []
                 for ht in self.hashTagMatcher.findall(mText):
                     msgHashTags.append(str(ht))
-                ## TODO: fix this: thread problem
-                """
-                self.database.create(epoch=mEpoch,
-                                     dateTime=strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
-                                     text=mText.encode('utf-8'),
-                                     receiver="http",
-                                     hashTags=dumps(msgHashTags),
-                                     prototypes=dumps(mPrototype),
-                                     user=mUser)
-                """
+                self.dbQ.put({'epoch':mEpoch,
+                			  'dateTime':strftime("%Y/%m/%d %H:%M:%S", localtime(mEpoch)),
+                			  'text':mText.encode('utf-8'),
+                			  'receiver':'http',
+                			  'hashTags':msgHashTags,
+                			  'prototypes':mPrototype,
+                			  'user':mUser});
 
     def _sendMessage(self, msg):
         prots = []
@@ -158,6 +157,7 @@ class HttpReceiver(MessageReceiverInterface):
         self.serverIsWaitingForMessagesSince = -100
         self.lastMessagesSent = time()
         self.lastConnectionAttempt = 0
+        self.dbQ = Queue()
 
         return True
 
@@ -233,6 +233,17 @@ class HttpReceiver(MessageReceiverInterface):
             for m in mQuery.where(self.database.id > self.largestSentMessageId).order_by(self.database.id):
                 self._sendMessage(m)
             self.lastMessagesSent = time()
+
+		## log onto local database
+        while (not self.dbQ.empty()):
+        	dbargs = self.dbQ.get()
+        	self.database.create(epoch=dbargs['epoch'],
+                                 dateTime=dbargs['dateTime'],
+                                 text=dbargs['text'],
+                                 receiver=dbargs['receiver']
+                                 hashTags=dumps(dbargs['hashTags']),
+                                 prototypes=dumps(dbargs['prototypes']),
+                                 user=dbargs['user'])
 
     ## end http receiver; disconnect socket
     def stop(self):
