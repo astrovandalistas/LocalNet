@@ -71,7 +71,6 @@ def setup():
     setupDelQ = Queue()
     for (k,v) in receivers.iteritems():
         if(not v.setup(Message, mOscClient, LOCAL_NET_LOCALE)):
-            ## TODO: don't remove http or twitter, should keep trying to connect
             setupDelQ.put(k)
     while (not setupDelQ.empty()):
         badReceiver = setupDelQ.get()

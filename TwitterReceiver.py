@@ -40,7 +40,7 @@ class TwitterReceiver(MessageReceiverInterface):
         self._getLargestTweetId()
         self.twitterResults = None
         ## return
-        return self.twitterAuthenticated
+        return True
 
     ## check for new tweets every once in a while
     def update(self):
@@ -76,6 +76,7 @@ class TwitterReceiver(MessageReceiverInterface):
 
     ## authenticate to twitter using secrets
     def _authenticateTwitter(self):
+        print "trying to authenticate to Twitter"
         try:
             self.mTwitter = Twython(app_key = self.secrets['CONSUMER_KEY'],
                                     app_secret = self.secrets['CONSUMER_SECRET'],
@@ -100,6 +101,8 @@ class TwitterReceiver(MessageReceiverInterface):
 
     ## query twitter
     def _searchTwitter(self):
+        if(not self.twitterAuthenticated):
+            self._authenticateTwitter()
         if ((self.twitterAuthenticated) and (not self.mTwitter is None)):
             try:
                 self.twitterResults = self.mTwitter.search(q=" OR ".join(self.hashTags),
@@ -108,4 +111,7 @@ class TwitterReceiver(MessageReceiverInterface):
                                                            result_type="recent",
                                                            since_id=self.largestTweetId)
             except:
+                self.twitterAuthenticated = False
                 self.twitterResults = None
+        else:
+            self.twitterResults = None
