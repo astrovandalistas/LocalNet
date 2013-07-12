@@ -9,3 +9,4 @@ Dependencies:
 - [PySerial](http://pyserial.sourceforge.net)
 - [PyHumod](https://code.google.com/p/pyhumod)
 - [peewee](http://peewee.readthedocs.org)
+- [socketIO-client](https://github.com/invisibleroads/socketIO-client)

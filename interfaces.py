@@ -157,7 +157,7 @@ class MessageReceiverInterface:
     # Prepare OSC message and send it to all subscribers
     def sendToAllSubscribers(self, txt, addr=None):
         if (addr is None):
-            addr = "/AEffectLab/"+self.location+"/"+self.name
+            addr = "/AEffectLab/"+self.location['name']+"/"+self.name
         ## setup osc message
         msg = OSCMessage()
         msg.setAddress(addr)
@@ -167,7 +167,18 @@ class MessageReceiverInterface:
         self._sendToAllSubscribers(msg)
         ## update timer
         self.lastMessageTime = time.time()
-
+    # Prepare OSC message to send to specific subscriber
+    def sendToSubscriber(self, ip,port, txt):
+        addr = "/AEffectLab/"+self.location['name']+"/"+self.name
+        ## setup osc message
+        msg = OSCMessage()
+        msg.setAddress(addr)
+        ## Send utf-8 byte blob
+        msg.append(txt.encode('utf-8'), 'b')
+        ## send to subscriber
+        self._sendToSubscriber(msg,ip,port)
+        ## update timer
+        self.lastMessageTime = time.time()
     # Sends OSC msg to all subscribers
     def _sendToAllSubscribers(self, oscMsg):
         delQ = Queue()
@@ -183,3 +194,13 @@ class MessageReceiverInterface:
                 continue
         while (not delQ.empty()):
             self.removeSubscriber(delQ.get())
+    # Send OSC to specific subscriber
+    def _sendToSubscriber(self,msg,ip,port):
+        try:
+            self.oscClient.connect((ip, port))
+            self.oscClient.sendto(msg, (ip, port))
+            self.oscClient.connect((ip, port))
+        except OSCClientError:
+            print ("no connection to "+ip+":"+str(port)
+                    +", removing it from osc subscribers")
+            self.removeSubscriber((ip,port))
