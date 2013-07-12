@@ -84,10 +84,11 @@ class PrototypeInterface:
         msg.setAddress("/LocalNet/ListReceivers")
         msg.append(self.inPort)
         try:
-            self.oscClient.send(msg)
+            self.oscClient.connect(self.localNetAddress)
+            self.oscClient.sendto(msg,self.localNetAddress)
+            self.oscClient.connect(self.localNetAddress)
         except OSCClientError:
-            print ("no connection to "+self.localNetAddress
-                    +", can't request list of receivers")
+            print "no connection to %s:%s, can't request list of receivers"%(outip,outport)
 
     def _cleanUpOsc(self):
         ## disconnect from LocalNet
@@ -96,10 +97,11 @@ class PrototypeInterface:
             msg.setAddress("/LocalNet/Remove/"+rcvr)
             msg.append(self.inPort)
             try:
-                self.oscClient.send(msg)
+                self.oscClient.connect(self.localNetAddress)
+                self.oscClient.sendto(msg,self.localNetAddress)
+                self.oscClient.connect(self.localNetAddress)
             except OSCClientError:
-                print ("no connection to %s, can't disconnect from receivers"
-                       %(self.localNetAddress,))
+                print "no connection to %s:%s, can't disconnect from receivers"%(self.localNetAddress)
         ## close osc
         self.oscServer.close()
         self.oscThread.join()
@@ -114,10 +116,11 @@ class PrototypeInterface:
         msg.setAddress("/LocalNet/Add/"+self.name+"/"+rcvr)
         msg.append(self.inPort)
         try:
-            self.oscClient.send(msg)
+            self.oscClient.connect(self.localNetAddress)
+            self.oscClient.sendto(msg,self.localNetAddress)
+            self.oscClient.connect(self.localNetAddress)
         except OSCClientError:
-            print ("no connection to %s, can't subscribe to %s receiver"
-                   %(self.localNetAddress,) %rcvr)
+            print "no connection to %s:%s, can't subscribe to %s receiver"%(self.localNetAddress, rcvr)
         else:
             self.subscribedReceivers[rcvr] = rcvr
 
