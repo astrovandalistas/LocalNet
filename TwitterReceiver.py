@@ -13,7 +13,7 @@ class TwitterReceiver(MessageReceiverInterface):
     ## How often to check twitter (in seconds)
     TWITTER_CHECK_PERIOD = 6
     ## What to search for
-    SEARCH_TERMS = ["#aeLab", "#aeffect"]
+    SEARCH_TERMS = ["#aeLab", "#aeffect", "#aeffectLab"]
 
     ## setup twitter connection and internal variables
     def setup(self, db, osc, loc):
