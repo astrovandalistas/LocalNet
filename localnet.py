@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import time
+import sys, time, getopt
 from Queue import Queue
 from OSC import OSCClient, OSCMessage, OSCClientError
 from TwitterReceiver import TwitterReceiver
@@ -19,12 +19,6 @@ LOCAL_NET_LOCALE = {
                     "coordinates":[37.8044,-122.2697]
                     }
 LOCAL_NET_DESCRIPTION = "This is a house on 542 Lewis. Best fireworks display this side of the bay."
-OSC_SERVER_PORT = 8888
-MASTER_SERVER_IP = "127.0.0.1"
-MASTER_SERVER_PORT = 7777
-#WEB_SERVER_IP = "127.0.0.1"
-WEB_SERVER_IP = "192.168.1.119"
-WEB_SERVER_PORT = 3700
 
 ## init database
 class Message(Model):
@@ -36,7 +30,7 @@ class Message(Model):
     prototypes = CharField()
     user = CharField()
 
-def setup():
+def setup(inPort, webServerAddress, webServerPort):
     global prototypes, mOscClient, oscPingMessage
     global lastPrototypeCheck, receivers
     receivers = {}
@@ -63,9 +57,9 @@ def setup():
     receivers['twitter'] = rcvT
     rcvS = SmsReceiver()
     receivers['sms'] = rcvS
-    rcvO = OscReceiver(receivers,prototypes, port=OSC_SERVER_PORT)
+    rcvO = OscReceiver(receivers,prototypes, port=inPort)
     receivers['osc'] = rcvO
-    rcvH = HttpReceiver(receivers,prototypes, WEB_SERVER_IP, WEB_SERVER_PORT, LOCAL_NET_DESCRIPTION)
+    rcvH = HttpReceiver(receivers,prototypes, webServerAddress, webServerPort, LOCAL_NET_DESCRIPTION)
     receivers['http'] = rcvH
     mOscClient = OSCClient()
     setupDelQ = Queue()
@@ -119,7 +113,17 @@ def loop():
             receivers[m.receiver].sendToAllSubscribers(str(m.text).decode('utf-8'))
 
 if __name__=="__main__":
-    setup()
+    (inPort, webServerAddress, webServerPort) = (8888, "127.0.0.1", 3700)
+    opts, args = getopt.getopt(sys.argv[1:],"i:w:o:",["inport=","webserver=","webserverport="])
+    for opt, arg in opts:
+        if(opt in ("--inport","-i")):
+            inPort = int(arg)
+        elif(opt in ("--webserver","-w")):
+            webServerAddress = str(arg)
+        elif(opt in ("--webserverport","-o")):
+            webServerPort = int(arg)
+
+    setup(inPort, webServerAddress, webServerPort)
     try:
         while(True):
             ## keep it from looping faster than ~60 times per second
