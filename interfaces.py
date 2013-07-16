@@ -11,6 +11,7 @@ def runPrototype(prot):
         while True:
             ## keep it from looping faster than ~60 times per second
             loopStart = time.time()
+            prot._checkLocalNet()
             prot.loop()
             loopTime = time.time()-loopStart
             if (loopTime < 0.017):
@@ -53,11 +54,25 @@ class PrototypeInterface:
               and (addrTokens[1].lower() == "receivers")):
             for rcvr in stuff[0].split(','):
                 self.allReceivers[rcvr] = rcvr
+            if(self.subscribedToAll and not self.subscribedReceivers):
+                self.subscribeToAll()
         ## actual message from AEffect Network !!
         elif (addrTokens[0].lower() == "aeffectlab"):
             self.messageQ.put((addrTokens[1],
                                addrTokens[2],
                                stuff[0].decode('utf-8')))
+    def _checkLocalNet(self):
+        if(not self.allReceivers):
+            ## request list of all receivers from localnet
+            msg = OSCMessage()
+            msg.setAddress("/LocalNet/ListReceivers")
+            msg.append(self.inPort)
+            try:
+                self.oscClient.connect(self.localNetAddress)
+                self.oscClient.sendto(msg,self.localNetAddress)
+                self.oscClient.connect(self.localNetAddress)
+            except OSCClientError:
+                print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
 
     def __init__(self,inport,outip,outport):
         ## administrative: names and ports
@@ -67,6 +82,7 @@ class PrototypeInterface:
         self.name = self.__class__.__name__.lower()
         self.allReceivers = {}
         self.subscribedReceivers = {}
+        self.subscribedToAll = False
 
         ## setup osc client
         self.oscClient = OSCClient()
@@ -88,7 +104,7 @@ class PrototypeInterface:
             self.oscClient.sendto(msg,self.localNetAddress)
             self.oscClient.connect(self.localNetAddress)
         except OSCClientError:
-            print "no connection to %s:%s, can't request list of receivers"%(outip,outport)
+            print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
 
     def _cleanUpOsc(self):
         ## disconnect from LocalNet
@@ -107,6 +123,7 @@ class PrototypeInterface:
         self.oscThread.join()
 
     def subscribeToAll(self):
+        self.subscribedToAll = True
         for rcvr in self.allReceivers.keys():
             if(not rcvr.lower().startswith('osc')):
                 self.subscribeTo(rcvr)
