@@ -61,8 +61,19 @@ class PrototypeInterface:
             self.messageQ.put((addrTokens[1],
                                addrTokens[2],
                                stuff[0].decode('utf-8')))
+        ## ping
+        if ((addrTokens[0].lower() == "localnet")
+            and (addrTokens[1].lower() == "ping")):
+            self.lastPingTime = time.time()
+
     def _checkLocalNet(self):
-        if(not self.allReceivers):
+        ## clear receivers to force a localNet check
+        if(time.time()-self.lastPingTime > 30):
+            self.allReceivers = {}
+
+        if((not self.allReceivers) 
+            and (time.time() - self.lastLocalNetConnectionAttempt > 30)):
+            self.lastLocalNetConnectionAttempt = time.time()
             ## request list of all receivers from localnet
             msg = OSCMessage()
             msg.setAddress("/LocalNet/ListReceivers")
@@ -83,6 +94,8 @@ class PrototypeInterface:
         self.allReceivers = {}
         self.subscribedReceivers = {}
         self.subscribedToAll = False
+        self.lastPingTime = 0
+        self.lastLocalNetConnectionAttempt = 0
 
         ## setup osc client
         self.oscClient = OSCClient()
@@ -96,15 +109,7 @@ class PrototypeInterface:
         self.oscThread.start()
 
         ## request list of all receivers from localnet
-        msg = OSCMessage()
-        msg.setAddress("/LocalNet/ListReceivers")
-        msg.append(self.inPort)
-        try:
-            self.oscClient.connect(self.localNetAddress)
-            self.oscClient.sendto(msg,self.localNetAddress)
-            self.oscClient.connect(self.localNetAddress)
-        except OSCClientError:
-            print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
+        self._checkLocalNet()
 
     def _cleanUpOsc(self):
         ## disconnect from LocalNet
