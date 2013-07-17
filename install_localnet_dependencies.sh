@@ -7,7 +7,8 @@ sudo apt-get install emacs python-dev python-setuptools
 cd ../
 
 # pyOsc
-wget https://trac.v2.nl/raw-attachment/wiki/pyOSC/pyOSC-0.3.5b-5294.tar.gz
+#wget https://trac.v2.nl/raw-attachment/wiki/pyOSC/pyOSC-0.3.5b-5294.tar.gz
+curl https://trac.v2.nl/raw-attachment/wiki/pyOSC/pyOSC-0.3.5b-5294.tar.gz -o pyOSC-0.3.5b-5294.tar.gz
 tar -xzvf pyOSC-0.3.5b-5294.tar.gz
 cd pyOSC-0.3.5b-5294
 sudo python setup.py install
@@ -15,7 +16,8 @@ cd ../
 rm -rf pyOSC-0.3.5b-5294.tar.gz
 
 # pySerial
-wget https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
+#wget https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz
+curl https://pypi.python.org/packages/source/p/pyserial/pyserial-2.6.tar.gz -o pyserial-2.6.tar.gz
 tar -xzvf pyserial-2.6.tar.gz
 cd pyserial-2.6
 sudo python setup.py install
@@ -23,7 +25,8 @@ cd ../
 rm -rf pyserial-2.6.tar.gz
 
 # pyHumod
-wget http://pyhumod.googlecode.com/files/pyhumod-0.03.tar.gz
+#wget http://pyhumod.googlecode.com/files/pyhumod-0.03.tar.gz
+curl http://pyhumod.googlecode.com/files/pyhumod-0.03.tar.gz -o pyhumod-0.03.tar.gz
 tar -xzvf pyhumod-0.03.tar.gz
 cd pyhumod-0.03
 sudo python setup.py install
@@ -46,5 +49,12 @@ cd ../
 git clone https://github.com/WiringPi/WiringPi-Python.git
 cd WiringPi-Python
 git submodule update --init
+sudo python setup.py install
+cd ../
+
+# socketIO-client
+git clone https://github.com/thiagohersan/socketIO-client.git
+cd socketIO-client
+git checkout fixConnectionInit
 sudo python setup.py install
 cd ../
