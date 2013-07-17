@@ -48,3 +48,10 @@ cd WiringPi-Python
 git submodule update --init
 sudo python setup.py install
 cd ../
+
+# socketIO-client
+git clone https://github.com/thiagohersan/socketIO-client.git
+cd socketIO-client
+git checkout fixConnectionInit
+sudo python setup.py install
+cd ../
