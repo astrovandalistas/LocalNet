@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # start LocalNet
-python localnet.py --inport=8888 --webserver=127.0.0.1 --webserverport=3700
+python localnet.py --inport=8888 --webserver=foocoop.mx --webserverport=3700
