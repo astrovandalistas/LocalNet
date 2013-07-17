@@ -118,7 +118,7 @@ class HttpReceiver(MessageReceiverInterface):
                 prots.append((str(i), int(p)))
 
         mInfo = {
-                'localNetName':self.location['name'],
+                'name':self.location['name'],
                 'location':self._getLocationDict(),
                 'dateTime':msg.dateTime,
                 'epoch':msg.epoch,
@@ -171,7 +171,7 @@ class HttpReceiver(MessageReceiverInterface):
         ## if local net not on web server, add to server
         if(not self.addedToServer):
             localNetInfo = {
-                            'localNetName':self.location['name'],
+                            'name':self.location['name'],
                             'location':self._getLocationDict(),
                             'localNetDescription':self.localNetDescription,
                             'receivers':self.allReceivers.keys(),
@@ -202,7 +202,7 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to add it to server
             pInfo = {
-                    'localNetName':self.location['name'],
+                    'name':self.location['name'],
                     'location':self._getLocationDict(),
                     'prototypeName':self.allPrototypes[p],
                     'prototypeAddress':pip+":"+str(pport),
@@ -221,7 +221,7 @@ class HttpReceiver(MessageReceiverInterface):
             (pip,pport) = p
             ## send prototype info to remove it from server
             pInfo = {
-                    'localNetName':self.location['name'],
+                    'name':self.location['name'],
                     'location':self._getLocationDict(),
                     'prototypeName':self.sentPrototypes[p],
                     'prototypeAddress':pip+":"+str(pport)
