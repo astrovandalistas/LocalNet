@@ -85,9 +85,10 @@ class PrototypeInterface:
             except OSCClientError:
                 print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
 
-    def __init__(self,inport,outip,outport):
+    def __init__(self,inip,inport,outip,outport):
         ## administrative: names and ports
         self.messageQ = Queue()
+        self.inIp = inip
         self.inPort = inport
         self.localNetAddress = (outip,outport)
         self.name = self.__class__.__name__.lower()
@@ -102,8 +103,7 @@ class PrototypeInterface:
         self.oscClient.connect(self.localNetAddress)
 
         ## setup osc receiver
-        ## or this?? ifconfig | grep inet | grep -v 'inet6\|127.0.0.1'
-        self.oscServer = OSCServer(("127.0.0.1",self.inPort))
+        self.oscServer = OSCServer((self.inIp, self.inPort))
         self.oscServer.addMsgHandler('default', self._oscHandler)
         self.oscThread = threading.Thread(target = self.oscServer.serve_forever)
         self.oscThread.start()
