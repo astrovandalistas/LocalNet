@@ -30,7 +30,7 @@ class Message(Model):
     prototypes = CharField()
     user = CharField()
 
-def setup(inPort, webServerAddress, webServerPort):
+def setup(inIp, inPort, webServerAddress, webServerPort):
     global prototypes, mOscClient, oscPingMessage
     global lastPrototypeCheck, receivers
     receivers = {}
@@ -57,7 +57,7 @@ def setup(inPort, webServerAddress, webServerPort):
     receivers['twitter'] = rcvT
     rcvS = SmsReceiver()
     receivers['sms'] = rcvS
-    rcvO = OscReceiver(receivers,prototypes, port=inPort)
+    rcvO = OscReceiver(receivers,prototypes, ip=inIp, port=inPort)
     receivers['osc'] = rcvO
     rcvH = HttpReceiver(receivers,prototypes, webServerAddress, webServerPort, LOCAL_NET_DESCRIPTION)
     receivers['http'] = rcvH
@@ -113,17 +113,19 @@ def loop():
             receivers[m.receiver].sendToAllSubscribers(str(m.text).decode('utf-8'))
 
 if __name__=="__main__":
-    (inPort, webServerAddress, webServerPort) = (8888, "127.0.0.1", 3700)
-    opts, args = getopt.getopt(sys.argv[1:],"i:w:o:",["inport=","webserver=","webserverport="])
+    (inIp, inPort, webServerAddress, webServerPort) = ("127.0.0.1", 8888, "127.0.0.1", 3700)
+    opts, args = getopt.getopt(sys.argv[1:],"i:p:w:o:",["inip=","inport=","webserver=","webserverport="])
     for opt, arg in opts:
-        if(opt in ("--inport","-i")):
+        if(opt in ("--inip","-i")):
+            inIp = str(arg)
+        elif(opt in ("--inport","-p")):
             inPort = int(arg)
         elif(opt in ("--webserver","-w")):
             webServerAddress = str(arg)
         elif(opt in ("--webserverport","-o")):
             webServerPort = int(arg)
 
-    setup(inPort, webServerAddress, webServerPort)
+    setup(inIp, inPort, webServerAddress, webServerPort)
     try:
         while(True):
             ## keep it from looping faster than ~60 times per second
