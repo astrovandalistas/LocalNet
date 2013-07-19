@@ -72,7 +72,7 @@ class PrototypeInterface:
             self.allReceivers = {}
 
         if((not self.allReceivers) 
-            and (time.time() - self.lastLocalNetConnectionAttempt > 30)):
+            and (time.time() - self.lastLocalNetConnectionAttempt > 20)):
             self.lastLocalNetConnectionAttempt = time.time()
             ## request list of all receivers from localnet
             msg = OSCMessage()
