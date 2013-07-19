@@ -74,7 +74,8 @@ class HttpReceiver(MessageReceiverInterface):
     def _onAddServerMessage(self, *args):
         print "got message from server"
         for arg in args:
-            mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
+            #mEpoch = float(arg['epoch']) if('epoch' in arg) else time()
+            mEpoch = time()
             mText = arg['messageText'] if('messageText' in arg) else ""
             mPrototype = str(arg['prototype']) if('prototype' in arg) else ""
             mUser = str(arg['user']) if('user' in arg) else ""
