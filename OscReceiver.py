@@ -44,9 +44,9 @@ class OscReceiver(MessageReceiverInterface):
                         oscSubscribeMessage = OSCMessage()
                         oscSubscribeMessage.setAddress("/LocalNet/Add/"+addrTokens[2]+"/Osc")
                         oscSubscribeMessage.append(str(self.oscServerPort).encode('utf-8'), 'b')
-                        self.oscClient.connect((self.oscMasterIp, int(self.oscMasterPort)))
+                        #self.oscClient.connect((self.oscMasterIp, int(self.oscMasterPort)))
                         self.oscClient.sendto(oscSubscribeMessage, (self.oscMasterIp, int(self.oscMasterPort)))
-                        self.oscClient.connect((self.oscMasterIp, int(self.oscMasterPort)))
+                        #self.oscClient.connect((self.oscMasterIp, int(self.oscMasterPort)))
                     except OSCClientError:
                         print ("no connection to "+self.oscMasterIp+":"+str(self.oscMasterPort))
         elif ((addrTokens[0].lower() == "localnet")
@@ -74,9 +74,9 @@ class OscReceiver(MessageReceiverInterface):
             msg.setAddress("/LocalNet/Receivers")
             msg.append(",".join(self.allReceivers.keys()))
             try:
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
                 self.oscClient.sendto(msg, (ip, port))
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
             except OSCClientError:
                 print ("no connection to "+ip+":"+str(port)
                        +", can't send list of receivers")
@@ -90,9 +90,9 @@ class OscReceiver(MessageReceiverInterface):
             msg.setAddress("/LocalNet/Prototypes")
             msg.append(",".join(self.allPrototypes.values()))
             try:
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
                 self.oscClient.sendto(msg, (ip, port))
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
             except OSCClientError:
                 print ("no connection to "+ip+":"+str(port)
                        +", can't send list of prototypes")
