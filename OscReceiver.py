@@ -73,7 +73,7 @@ class OscReceiver(MessageReceiverInterface):
             msg = OSCMessage()
             msg.setAddress("/LocalNet/Receivers")
             msg.append(",".join(self.allReceivers.keys()))
-            print "got a request for receivers"
+            print "got a request for receivers from %s:%s"%(ip,port)
             try:
                 #self.oscClient.connect((ip, port))
                 self.oscClient.sendto(msg, (ip, port))

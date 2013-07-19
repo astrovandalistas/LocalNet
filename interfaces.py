@@ -54,6 +54,7 @@ class PrototypeInterface:
               and (addrTokens[1].lower() == "receivers")):
             ## as good, if not better than a ping
             self.lastPingTime = time.time()
+            print "got receivers %s"%(stuff[0])
             for rcvr in stuff[0].split(','):
                 self.allReceivers[rcvr] = rcvr
             if(self.subscribedToAll and not self.subscribedReceivers):
