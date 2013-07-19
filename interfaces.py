@@ -57,7 +57,7 @@ class PrototypeInterface:
             print "got receivers %s"%(stuff[0])
             for rcvr in stuff[0].split(','):
                 self.allReceivers[rcvr] = rcvr
-            if(self.subscribedToAll and not self.subscribedReceivers):
+            if(self.subscribedToAll and (not self.allReceivers) or (not self.subscribedReceivers)):
                 self.subscribeToAll()
         ## actual message from AEffect Network !!
         elif (addrTokens[0].lower() == "aeffectlab"):
