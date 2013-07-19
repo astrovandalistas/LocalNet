@@ -79,11 +79,14 @@ class PrototypeInterface:
             msg.setAddress("/LocalNet/ListReceivers")
             msg.append(self.inPort)
             try:
-                self.oscClient.connect(self.localNetAddress)
+                #self.oscClient.connect(self.localNetAddress)
                 self.oscClient.sendto(msg,self.localNetAddress)
-                self.oscClient.connect(self.localNetAddress)
+                #self.oscClient.connect(self.localNetAddress)
             except OSCClientError:
-                print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
+                try:
+                    self.oscClient.sendto(msg,self.localNetAddress)
+                except OSCClientError:
+                    print "no connection to %s:%s, can't request list of receivers"%(self.localNetAddress)
 
     def __init__(self,inip,inport,outip,outport):
         ## administrative: names and ports
@@ -118,11 +121,14 @@ class PrototypeInterface:
             msg.setAddress("/LocalNet/Remove/"+rcvr)
             msg.append(self.inPort)
             try:
-                self.oscClient.connect(self.localNetAddress)
+                #self.oscClient.connect(self.localNetAddress)
                 self.oscClient.sendto(msg,self.localNetAddress)
-                self.oscClient.connect(self.localNetAddress)
+                #self.oscClient.connect(self.localNetAddress)
             except OSCClientError:
-                print "no connection to %s:%s, can't disconnect from receivers"%(self.localNetAddress)
+                try:
+                    self.oscClient.sendto(msg,self.localNetAddress)
+                except OSCClientError:
+                    print "no connection to %s:%s, can't disconnect from receivers"%(self.localNetAddress)
         ## close osc
         self.oscServer.close()
         self.oscThread.join()
@@ -138,11 +144,16 @@ class PrototypeInterface:
         msg.setAddress("/LocalNet/Add/"+self.name+"/"+rcvr)
         msg.append(self.inPort)
         try:
-            self.oscClient.connect(self.localNetAddress)
+            #self.oscClient.connect(self.localNetAddress)
             self.oscClient.sendto(msg,self.localNetAddress)
-            self.oscClient.connect(self.localNetAddress)
+            #self.oscClient.connect(self.localNetAddress)
         except OSCClientError:
-            print "no connection to %s:%s, can't subscribe to %s receiver"%(self.localNetAddress, rcvr)
+            try:
+                self.oscClient.sendto(msg,self.localNetAddress)
+            except OSCClientError:
+                print "no connection to %s:%s, can't subscribe to %s receiver"%(self.localNetAddress, rcvr)
+            else:
+                self.subscribedReceivers[rcvr] = rcvr
         else:
             self.subscribedReceivers[rcvr] = rcvr
 
@@ -209,23 +220,27 @@ class MessageReceiverInterface:
         delQ = Queue()
         for (ip,port) in self.subscriberList:
             try:
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
                 self.oscClient.sendto(oscMsg, (ip, port))
-                self.oscClient.connect((ip, port))
+                #self.oscClient.connect((ip, port))
             except OSCClientError:
-                print ("no connection to "+ip+":"+str(port)
-                       +", removing it from osc subscribers")
-                delQ.put((ip,port))
+                try:
+                    self.oscClient.sendto(oscMsg, (ip, port))
+                except OSCClientError:
+                    print ("no connection to %s:%s, removing it from osc subscribers")%(ip,port)
+                    delQ.put((ip,port))
                 continue
         while (not delQ.empty()):
             self.removeSubscriber(delQ.get())
     # Send OSC to specific subscriber
     def _sendToSubscriber(self,msg,ip,port):
         try:
-            self.oscClient.connect((ip, port))
+            #self.oscClient.connect((ip, port))
             self.oscClient.sendto(msg, (ip, port))
-            self.oscClient.connect((ip, port))
+            #self.oscClient.connect((ip, port))
         except OSCClientError:
-            print ("no connection to "+ip+":"+str(port)
-                    +", removing it from osc subscribers")
-            self.removeSubscriber((ip,port))
+            try:
+                self.oscClient.sendto(msg, (ip, port))
+            except OSCClientError:
+                print ("no connection to %s:%s, removing it from osc subscribers")%(ip,port)
+                self.removeSubscriber((ip,port))
