@@ -52,6 +52,8 @@ class PrototypeInterface:
         ## list of all receivers
         if ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "receivers")):
+            ## as good, if not better than a ping
+            self.lastPingTime = time.time()
             for rcvr in stuff[0].split(','):
                 self.allReceivers[rcvr] = rcvr
             if(self.subscribedToAll and not self.subscribedReceivers):
