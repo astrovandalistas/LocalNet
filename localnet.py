@@ -96,7 +96,7 @@ def loop():
     global lastPrototypeCheck, receivers
 
     ## check prototype connection every 30 seconds
-    if(time.time()-lastPrototypeCheck > 30):
+    if(time.time()-lastPrototypeCheck > 10):
         checkPrototypes()
         lastPrototypeCheck = time.time()
 
