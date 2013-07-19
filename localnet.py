@@ -107,8 +107,8 @@ def loop():
         if(v.lastMessageTime > recentLastMessage):
             recentLastMessage = v.lastMessageTime
 
-    ## if haven't seen a message in a while (5 minutes), dig from database
-    if(time.time() - recentLastMessage > 300):
+    ## if haven't seen a message in a while (3 minutes), dig from database
+    if(time.time() - recentLastMessage > 180):
         for m in Message.select().order_by(fn.Random()).limit(1):
             receivers[m.receiver].sendToAllSubscribers(str(m.text).decode('utf-8'))
 
