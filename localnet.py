@@ -80,12 +80,11 @@ def checkPrototypes():
     delQ = Queue()
     for (ip,port) in prototypes:
         try:
-            mOscClient.connect((ip, int(port)))
+            #mOscClient.connect((ip, int(port)))
             mOscClient.sendto(oscPingMessage, (ip, int(port)))
-            mOscClient.connect((ip, int(port)))
+            #mOscClient.connect((ip, int(port)))
         except OSCClientError:
-            print ("no connection to "+ip+":"+str(port)
-                    +", removing it from list of prototypes")
+            print ("no connection to %s:%s, removing it from list of prototypes")%(ip,port)
             delQ.put((ip,port))
             continue
     while (not delQ.empty()):
