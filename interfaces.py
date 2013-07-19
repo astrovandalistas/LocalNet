@@ -80,6 +80,7 @@ class PrototypeInterface:
             msg = OSCMessage()
             msg.setAddress("/LocalNet/ListReceivers")
             msg.append(self.inPort)
+            print "asking for receivers"
             try:
                 #self.oscClient.connect(self.localNetAddress)
                 self.oscClient.sendto(msg,self.localNetAddress)
