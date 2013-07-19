@@ -52,6 +52,8 @@ class PrototypeInterface:
         ## list of all receivers
         if ((addrTokens[0].lower() == "localnet")
               and (addrTokens[1].lower() == "receivers")):
+            ## as good, if not better than a ping
+            self.lastPingTime = time.time()
             for rcvr in stuff[0].split(','):
                 self.allReceivers[rcvr] = rcvr
             if(self.subscribedToAll and not self.subscribedReceivers):
@@ -68,11 +70,11 @@ class PrototypeInterface:
 
     def _checkLocalNet(self):
         ## clear receivers to force a localNet check
-        if(time.time()-self.lastPingTime > 30):
+        if(time.time()-self.lastPingTime > 45):
             self.allReceivers = {}
 
         if((not self.allReceivers) 
-            and (time.time() - self.lastLocalNetConnectionAttempt > 20)):
+            and (time.time() - self.lastLocalNetConnectionAttempt > 10)):
             self.lastLocalNetConnectionAttempt = time.time()
             ## request list of all receivers from localnet
             msg = OSCMessage()
@@ -95,8 +97,8 @@ class PrototypeInterface:
         self.allReceivers = {}
         self.subscribedReceivers = {}
         self.subscribedToAll = False
-        self.lastPingTime = 0
-        self.lastLocalNetConnectionAttempt = 0
+        self.lastPingTime = time.time()
+        self.lastLocalNetConnectionAttempt = time.time()
 
         ## setup osc client
         self.oscClient = OSCClient()

@@ -94,7 +94,7 @@ class TwitterReceiver(MessageReceiverInterface):
                        (tweet['id'],
                         tweet['user']['screen_name'],
                         tweet['created_at']))
-                print tweet['text'],"\n"
+                print "%s\n"%(tweet['text'].encode('utf-8'))
                 if (int(tweet['id']) > self.largestTweetId):
                     self.largestTweetId = int(tweet['id'])
 
