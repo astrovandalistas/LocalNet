@@ -129,7 +129,7 @@ class HttpReceiver(MessageReceiverInterface):
                 'receiver':msg.receiver,
                 'prototypes':prots
                 }
-        print "sending message "+str(msg.id)+":"+str(msg.text).decode('utf-8')+" to server"
+        print "sending message %s:%s to server"%((msg.id), (msg.text))
         self.localNetSocket.emit('addMessage', mInfo, self._onAddLocalNetMessageSuccess)
 
     def _attemptConnection(self):
