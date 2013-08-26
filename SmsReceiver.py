@@ -64,6 +64,9 @@ class SmsReceiver(MessageReceiverInterface):
             print "No SIM card detected, sorry"
             self.modemReady = False
             return self.modemReady
+        ## if everything ok, clear sim card
+        for m in range(len(self.modem.sms_list())):
+            self.modem.sms_del(m)
         ## return
         return self.modemReady
 
